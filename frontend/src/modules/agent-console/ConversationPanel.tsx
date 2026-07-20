@@ -30,15 +30,22 @@ export function ConversationPanel({ conversationId }: ConversationPanelProps) {
 
   const handleSend = (content: string) => {
     if (!conversationId) {
-      // If no conversation, create one first, then navigate, then send.
-      // In a real app, you might want to create the conversation and send the message in one go
-      // or send the message and get a new conversation ID back.
-      createConversation({ title: 'New Conversation' }, {
-        onSuccess: (data) => {
+      // Create conversation and send the first message in one go
+      createConversation({ title: content.slice(0, 30) + '...' }, {
+        onSuccess: async (data) => {
           if (data && data.id) {
-            router.push(`/console/${data.id}`);
-            // Wait for navigation/mount then send (simplified here)
-            toast.info("Created new conversation. Please send your message again.");
+            try {
+              // Send the initial message directly since the hook is bound to an empty ID
+              const { apiClient } = await import('@/services/api');
+              await apiClient(`/conversations/${data.id}/messages`, {
+                method: 'POST',
+                body: JSON.stringify({ content }),
+              });
+              // Then redirect to the conversation
+              router.push(`/console/${data.id}`);
+            } catch (err) {
+              toast.error("Failed to send message: " + (err as Error).message);
+            }
           }
         },
         onError: () => toast.error("Failed to start conversation")

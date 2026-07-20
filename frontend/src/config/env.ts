@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:4001'),
+  NEXT_PUBLIC_API_URL: z.string().url().default('http://localhost:3001'),
   NEXT_PUBLIC_WS_URL: z.string().url().default('ws://localhost:3000'),
   // Add other environment variables here
 });
