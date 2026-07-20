@@ -28,7 +28,17 @@ export class PromptBuilderService {
     // 3. Conversation History (Mocked for now, will pull from DB later)
     // messages.push(...history)
 
-    // 4. Current User Message
+    // 4. Tool Results (if any exist in context)
+    if (context.toolResults && context.toolResults.length > 0) {
+      context.toolResults.forEach(result => {
+        messages.push({
+          role: 'system',
+          content: `Tool '${result.toolName}' returned: ${JSON.stringify(result.result)}`
+        });
+      });
+    }
+
+    // 5. Current User Message
     messages.push({
       role: 'user',
       content: userMessage

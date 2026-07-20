@@ -12,6 +12,7 @@ export interface ExecutionContext {
   tenantId?: string;
   agentId: string;
   toolCalls: any[];
+  toolResults?: { toolName: string; result: any }[];
   modelConfig: ModelConfig;
   memoryData?: any;
   metadata: Record<string, any>;
