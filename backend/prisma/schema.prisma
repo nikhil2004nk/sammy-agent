@@ -68,6 +68,11 @@ model Run {
   status            String   // 'running', 'completed', 'failed', 'cancelled', 'requires_action'
   terminationReason String?
   tokenUsage        Int      @default(0)
+  toolCount         Int      @default(0)
+  reasoningCount    Int      @default(0)
+  totalTokens       Int      @default(0)
+  estimatedCost     Float    @default(0)
+  durationMs        Int?
   metadata          Json?
   version           Int      @default(1)
   createdAt         DateTime @default(now())
@@ -77,6 +82,28 @@ model Run {
   messages          Message[]
   reasoningSteps    ReasoningStep[]
   events            Event[]
+  executionNodes    ExecutionNode[]
+}
+
+model ExecutionNode {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId           String   @db.Uuid
+  parentNodeId    String?  @db.Uuid
+  sequence        Int
+  type            String   // 'reasoning', 'tool', 'planner', 'workflow', 'approval', 'message'
+  status          String
+  title           String?
+  summary         String?  @db.Text
+  referenceType   String?
+  referenceId     String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  durationMs      Int?
+
+  run             Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  parent          ExecutionNode? @relation("ExecutionNodeHierarchy", fields: [parentNodeId], references: [id])
+  children        ExecutionNode[] @relation("ExecutionNodeHierarchy")
 }
 
 model ReasoningStep {

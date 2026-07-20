@@ -9,6 +9,11 @@ export interface Run {
   terminationReason?: string;
   metadata?: Record<string, any>;
   version: number;
+  toolCount?: number;
+  reasoningCount?: number;
+  totalTokens?: number;
+  estimatedCost?: number;
+  durationMs?: number;
 }
 
 export type ExecutionNodeType = 'reasoning' | 'tool' | 'message' | 'plan';
@@ -22,6 +27,8 @@ export interface ExecutionNode {
   status: ExecutionNodeStatus;
   title: string;
   payload?: any;
+  referenceType?: string;
+  referenceId?: string;
   startedAt: number;
   finishedAt?: number;
   duration?: number;

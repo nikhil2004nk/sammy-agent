@@ -28,6 +28,10 @@ export class ExecutionTrackerService {
     const updates: Partial<Run> = { status };
     if (status === 'completed' || status === 'failed' || status === 'cancelled') {
       updates.endedAt = Date.now();
+      const run = await this.store.getRun(runId);
+      if (run) {
+        updates.durationMs = updates.endedAt - run.createdAt;
+      }
     }
     if (terminationReason) {
       updates.terminationReason = terminationReason;
@@ -66,6 +70,17 @@ export class ExecutionTrackerService {
       agentName
     };
     await this.store.createNode(node);
+
+    // Update aggregate metrics on Run
+    const run = await this.store.getRun(runId);
+    if (run) {
+      if (type === 'tool') {
+        await this.store.updateRun(runId, { toolCount: (run.toolCount || 0) + 1 });
+      } else if (type === 'reasoning') {
+        await this.store.updateRun(runId, { reasoningCount: (run.reasoningCount || 0) + 1 });
+      }
+    }
+
     return node;
   }
 
