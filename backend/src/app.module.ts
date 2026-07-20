@@ -14,6 +14,7 @@ import { LlmModule } from './modules/llm/llm.module';
 import { PromptsModule } from './modules/prompts/prompts.module';
 import { ToolsModule } from './modules/tools/tools.module';
 import { McpModule } from './modules/mcp/mcp.module';
+import { RegistryModule } from './modules/registry/registry.module';
 
 @Module({
   imports: [

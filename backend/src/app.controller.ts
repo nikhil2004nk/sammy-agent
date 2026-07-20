@@ -1,28 +1,28 @@
-import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { ExecutionService } from './modules/runtime/execution/execution.service';
 import { ExecutionContext } from './common/execution-context';
-import { v4 as uuidv4 } from 'uuid';
+import * as crypto from 'crypto';
 
 export class ChatDto {
   agentId: string;
-  conversationId: string;
+  conversationId?: string;
   message: string;
 }
 
-@Controller()
+@Controller('chat')
 export class AppController {
   constructor(private readonly executionService: ExecutionService) {}
 
-  @Post('chat')
+  @Post()
   async chat(@Body() body: ChatDto) {
     // 1. In a real system, we'd fetch the Agent & Conversation from the DB here.
     // For Phase 1, we stub the ExecutionContext.
     
     const context: ExecutionContext = {
-      traceId: uuidv4(),
-      conversationId: body.conversationId || uuidv4(),
+      traceId: crypto.randomUUID(),
+      conversationId: body.conversationId || crypto.randomUUID(),
       userId: 'test-user-id', // Would come from Auth JWT
-      agentId: body.agentId || uuidv4(),
+      agentId: body.agentId || crypto.randomUUID(),
       toolCalls: [],
       modelConfig: {
         provider: 'openai', // Extracted from Agent DB config
