@@ -4,6 +4,8 @@ import { CapabilityResolverService } from '../resolver/capability-resolver.servi
 import { McpManagerService } from '../mcp/manager/mcp-manager.service';
 import { EventBusService } from '../events/event-bus.service';
 import { ToolExecutionResult } from '../mcp/types/mcp.types';
+import { ConnectionFactory } from '../connections/factories/connection.factory';
+import { ConnectionContext } from '../connections/types/connection.types';
 
 @Injectable()
 export class ToolExecutorService {
@@ -13,6 +15,7 @@ export class ToolExecutorService {
     private readonly resolver: CapabilityResolverService,
     private readonly mcpManager: McpManagerService,
     private readonly eventBus: EventBusService,
+    private readonly connectionFactory: ConnectionFactory,
   ) {}
 
   async executeTool(context: ExecutionContext, namespacedToolName: string, args: Record<string, any>): Promise<ToolExecutionResult> {
@@ -20,12 +23,15 @@ export class ToolExecutorService {
     this.logger.log(`Executing tool '${namespacedToolName}' for agent '${context.agentId}'`);
     this.eventBus.emitToolExecutionStarted(context.traceId, context.agentId, namespacedToolName, args);
 
+    let currentServerId = 'system';
     try {
       // 1. Resolve tool (handles registry lookup, permissions, and enabled status)
       const toolMetadata = await this.resolver.resolveTool(context, namespacedToolName);
       if (!toolMetadata) {
         throw new Error(`Tool '${namespacedToolName}' is not available or unauthorized.`);
       }
+
+      currentServerId = toolMetadata.serverId || 'system';
 
       // 2. Get adapter via Manager
       if (!toolMetadata.serverId) {
@@ -37,10 +43,19 @@ export class ToolExecutorService {
         throw new Error(`MCP Adapter for server '${toolMetadata.serverId}' is not available.`);
       }
 
-      // 3. Execute via adapter
-      const result = await adapter.executeTool(toolMetadata.name, args);
+      // 3. Resolve Connection Context
+      const connectionContext: ConnectionContext = {
+        tenantId: 'default', // Hardcoded until multi-tenant is fully active
+        userId: context.userId,
+        serverId: toolMetadata.serverId,
+      };
+      const resolvedConnection = await this.connectionFactory.resolveConnection(connectionContext);
 
-      // 4. Emit success event
+      // 4. Execute via adapter (pass resolvedConnection to allow adapter to use headers/auth if supported)
+      // Note: for stdio, the connection is already active, but we can pass it anyway for future-proofing
+      const result = await adapter.executeTool(toolMetadata.name, args, resolvedConnection);
+
+      // 5. Emit success event
       const duration = Date.now() - startTime;
       this.eventBus.emitToolExecutionCompleted(context.traceId, context.agentId, namespacedToolName, duration, result);
       
@@ -57,7 +72,7 @@ export class ToolExecutorService {
         success: false,
         error: error instanceof Error ? error.message : String(error),
         duration,
-        serverId: 'system',
+        serverId: currentServerId,
         toolName: namespacedToolName,
         metadata: {}
       };

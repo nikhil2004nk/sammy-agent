@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@common';
+import { INestApplication } from '@nestjs/common';
 import { McpModule } from '../src/modules/mcp/mcp.module';
 import { ToolsModule } from '../src/modules/tools/tools.module';
 import { ResolverModule } from '../src/modules/resolver/resolver.module';
@@ -73,7 +73,8 @@ describe('MCP End-to-End Validation (e2e)', () => {
     userId: 'user-1',
     agentId: 'agent-1',
     toolCalls: [],
-    modelConfig: { provider: 'test', model: 'test' }
+    modelConfig: { provider: 'test', model: 'test', temperature: 0.7, maxTokens: 1000 },
+    metadata: {}
   };
 
   it('Scenario 1: Discover Mock tools -> Registry updated', () => {

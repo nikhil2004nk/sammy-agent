@@ -1,49 +1,52 @@
 import { Injectable } from '@nestjs/common';
-import { ExecutionContext } from '../../common/execution-context';
-import { ILLMMessage } from '../llm/interfaces/llm-provider.interface';
+import { ILLMMessage, ILLMTool } from '../llm/interfaces/llm-provider.interface';
+import { Message } from '../conversation/conversation.types';
+import { ToolMetadata } from '../mcp/types/mcp.types';
 
 @Injectable()
 export class PromptBuilderService {
   /**
-   * Stitches together the system prompt, conversation history, 
-   * memory context, and tool results into a final array of messages.
+   * Transforms the conversation messages and capabilities into the format required by the LLM.
    */
-  async buildPrompt(context: ExecutionContext, userMessage: string): Promise<ILLMMessage[]> {
-    const messages: ILLMMessage[] = [];
+  buildPrompt(messages: Message[], capabilities: ToolMetadata[]): { messages: ILLMMessage[], tools: ILLMTool[] } {
+    const llmMessages: ILLMMessage[] = messages.map(msg => this.mapMessage(msg));
+    const tools: ILLMTool[] = capabilities.map(cap => this.mapCapabilityToTool(cap));
+    return { messages: llmMessages, tools };
+  }
 
-    // 1. System Prompt (Placeholder for now)
-    messages.push({
-      role: 'system',
-      content: 'You are Sammy, a highly capable AI Agent. Answer the user clearly and concisely.'
-    });
-
-    // 2. Memory / RAG Context (Future)
-    if (context.memoryData) {
-      messages.push({
-        role: 'system',
-        content: `Additional Context: ${JSON.stringify(context.memoryData)}`
-      });
+  private mapMessage(msg: Message): ILLMMessage {
+    switch (msg.role) {
+      case 'user':
+        return { role: 'user', content: msg.content };
+      case 'system':
+        return { role: 'system', content: msg.content };
+      case 'assistant':
+        return {
+          role: 'assistant',
+          content: msg.content,
+          toolCalls: msg.toolCalls?.map(tc => ({
+            id: tc.id,
+            name: tc.name,
+            arguments: tc.arguments
+          }))
+        };
+      case 'tool':
+        return {
+          role: 'tool',
+          content: typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result),
+          toolCallId: msg.toolCallId,
+          name: msg.toolName
+        };
+      default:
+        throw new Error(`Unsupported message role`);
     }
+  }
 
-    // 3. Conversation History (Mocked for now, will pull from DB later)
-    // messages.push(...history)
-
-    // 4. Tool Results (if any exist in context)
-    if (context.toolResults && context.toolResults.length > 0) {
-      context.toolResults.forEach(result => {
-        messages.push({
-          role: 'system',
-          content: `Tool '${result.toolName}' returned: ${JSON.stringify(result.result)}`
-        });
-      });
-    }
-
-    // 5. Current User Message
-    messages.push({
-      role: 'user',
-      content: userMessage
-    });
-
-    return messages;
+  private mapCapabilityToTool(cap: ToolMetadata): ILLMTool {
+    return {
+      name: cap.name,
+      description: cap.description || `Tool ${cap.name}`,
+      inputSchema: cap.inputSchema || { type: 'object', properties: {} }
+    };
   }
 }

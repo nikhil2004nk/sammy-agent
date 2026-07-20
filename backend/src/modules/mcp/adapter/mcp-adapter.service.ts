@@ -90,8 +90,7 @@ export class McpAdapterService {
       return [];
     }
   }
-
-  async executeTool(toolName: string, args: Record<string, any>): Promise<ToolExecutionResult> {
+  async executeTool(toolName: string, args: Record<string, any>, resolvedConnection?: any): Promise<ToolExecutionResult> {
     const startTime = Date.now();
     this.logger.log(`[Adapter] Executing tool '${toolName}' on '${this.serverId}'`);
     try {

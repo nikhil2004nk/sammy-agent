@@ -22,5 +22,19 @@ export interface McpConfig {
 
 // Register config under 'mcp' namespace
 export default registerAs('mcp', (): McpConfig => ({
-  servers: {}
+  servers: {
+    gmail: {
+      enabled: true,
+      transport: 'stdio',
+      startup: 'async',
+      command: 'node',
+      args: ['test/mock-gmail-server/index.js'],
+      timeout: 30000,
+      retry: {
+        maxAttempts: 3,
+        backoffMs: 2000,
+      },
+      healthInterval: 30000,
+    }
+  }
 }));
