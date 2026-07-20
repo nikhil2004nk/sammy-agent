@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ExecutionContext } from '../../../common/execution-context';
+import { ExecutionContext } from '../../common/execution-context';
 import { ILLMMessage } from '../llm/interfaces/llm-provider.interface';
 
 @Injectable()
