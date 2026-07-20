@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ExecutionContext } from '../../common/execution-context';
-import { ToolRegistryService } from '../registry/tool-registry.service';
-import { PermissionService } from '../permissions/permission.service';
+import { CapabilityResolverService } from '../resolver/capability-resolver.service';
 import { McpManagerService } from '../mcp/manager/mcp-manager.service';
 import { EventBusService } from '../events/event-bus.service';
 import { ToolExecutionResult } from '../mcp/types/mcp.types';
@@ -11,8 +10,7 @@ export class ToolExecutorService {
   private readonly logger = new Logger(ToolExecutorService.name);
 
   constructor(
-    private readonly registry: ToolRegistryService,
-    private readonly permissionService: PermissionService,
+    private readonly resolver: CapabilityResolverService,
     private readonly mcpManager: McpManagerService,
     private readonly eventBus: EventBusService,
   ) {}
@@ -23,19 +21,13 @@ export class ToolExecutorService {
     this.eventBus.emitToolExecutionStarted(context.traceId, context.agentId, namespacedToolName, args);
 
     try {
-      // 1. Resolve tool from registry
-      const toolMetadata = this.registry.getTool(namespacedToolName);
+      // 1. Resolve tool (handles registry lookup, permissions, and enabled status)
+      const toolMetadata = await this.resolver.resolveTool(context, namespacedToolName);
       if (!toolMetadata) {
-        throw new Error(`Tool '${namespacedToolName}' not found in registry.`);
+        throw new Error(`Tool '${namespacedToolName}' is not available or unauthorized.`);
       }
 
-      // 2. Permission check
-      const isAuthorized = await this.permissionService.checkToolPermission(context, toolMetadata);
-      if (!isAuthorized) {
-        throw new Error(`Agent '${context.agentId}' is not authorized to execute '${namespacedToolName}'.`);
-      }
-
-      // 3. Get adapter via Manager
+      // 2. Get adapter via Manager
       if (!toolMetadata.serverId) {
         throw new Error(`Tool '${namespacedToolName}' is missing serverId routing information.`);
       }
@@ -45,10 +37,10 @@ export class ToolExecutorService {
         throw new Error(`MCP Adapter for server '${toolMetadata.serverId}' is not available.`);
       }
 
-      // 4. Execute via adapter
+      // 3. Execute via adapter
       const result = await adapter.executeTool(toolMetadata.name, args);
 
-      // 5. Emit success event
+      // 4. Emit success event
       const duration = Date.now() - startTime;
       this.eventBus.emitToolExecutionCompleted(context.traceId, context.agentId, namespacedToolName, duration, result);
       

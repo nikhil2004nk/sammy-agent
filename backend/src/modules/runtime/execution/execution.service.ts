@@ -57,7 +57,7 @@ export class ExecutionService {
             const toolName = toolNameMatch ? toolNameMatch[1] : 'unknown';
             
             this.eventBus.emitToolCalled(context.traceId, context.agentId, context.conversationId, toolName, {});
-            const toolResult = await this.toolExecutor.executeTool(toolName, {});
+            const toolResult = await this.toolExecutor.executeTool(context, toolName, {});
             this.eventBus.emitToolFinished(context.traceId, context.agentId, context.conversationId, toolName, toolResult);
             
             context.toolResults.push({ toolName, result: toolResult });

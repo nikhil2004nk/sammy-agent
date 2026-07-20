@@ -17,9 +17,10 @@ export class McpDiscoveryService {
     private readonly eventBus: EventBusService,
   ) {}
 
-  // Trigger discovery automatically when a server becomes healthy
+  // Trigger discovery automatically when a server becomes healthy or connected
   @OnEvent('mcp.server.healthy')
-  async handleServerHealthy(event: ServerHealthyEvent) {
+  @OnEvent('mcp.server.connected')
+  async handleServerHealthy(event: ServerHealthyEvent | any) {
     const serverId = event.payload.serverId;
     await this.discoverServer(serverId);
   }

@@ -4,7 +4,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { McpAdapterService } from '../adapter/mcp-adapter.service';
 import { McpConfig, McpServerConfig } from '../config/mcp.config';
 import { AdapterState } from '../types/mcp.types';
-import { ServerUnhealthyEvent } from '../../events/event-bus.service';
+import { ServerUnhealthyEvent, EventBusService } from '../../events/event-bus.service';
 
 @Injectable()
 export class McpManagerService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -12,7 +12,10 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
   private adapters: Map<string, McpAdapterService> = new Map();
   private config: McpConfig;
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly eventBus: EventBusService,
+  ) {}
 
   async onApplicationBootstrap() {
     this.config = this.configService.get<McpConfig>('mcp') as McpConfig;
@@ -57,6 +60,9 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
         }
         
         // If we connect successfully, break the retry loop
+        // Ensure crypto is imported or available for traceId. We can use a generated traceId.
+        const traceId = 'sys-' + Date.now();
+        this.eventBus.emitServerConnected(traceId, serverId);
         break;
       } catch (error) {
         attempts++;
