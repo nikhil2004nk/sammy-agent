@@ -16,6 +16,8 @@ export function useConversations() {
   return useQuery({
     queryKey: conversationKeys.lists(),
     queryFn: () => apiClient<Conversation[]>('/conversations'),
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -47,6 +49,21 @@ export function useDeleteConversation() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
       queryClient.removeQueries({ queryKey: conversationKeys.detail(id) });
+    },
+  });
+}
+
+export function useUpdateConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, title }: { id: string; title: string }) =>
+      apiClient<Conversation>(`/conversations/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ title }),
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+      queryClient.setQueryData(conversationKeys.detail(data.id), data);
     },
   });
 }
@@ -104,6 +121,7 @@ export function useSendMessage(conversationId: string) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.messages(conversationId) });
+      queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
     },
   });
 }

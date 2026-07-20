@@ -30,7 +30,11 @@ jspm_packages/
 .env
 .env.*
 !.env.example
-!.env.template
+# Ignore env files anywhere in the repository
+**/.env
+**/.env.*
+!**/.env.example
+backend/.env
 
 # Next.js build output
 .next/

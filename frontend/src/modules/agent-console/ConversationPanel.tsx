@@ -3,11 +3,12 @@
 import { useRef, useEffect } from 'react';
 import { EmptyState } from '@/components/EmptyState';
 import { Bot, MessageSquarePlus } from 'lucide-react';
-import { useMessages, useSendMessage, useCreateConversation } from '@/domains/conversation/api';
+import { useMessages, useSendMessage, useCreateConversation, useUpdateConversation, useConversation } from '@/domains/conversation/api';
 import { MessageBubble } from './MessageBubble';
 import { Composer } from './Composer';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useUIStore } from '@/store/ui';
 
 interface ConversationPanelProps {
   conversationId?: string;
@@ -20,6 +21,15 @@ export function ConversationPanel({ conversationId }: ConversationPanelProps) {
   const { data: messages, isLoading } = useMessages(conversationId || null);
   const { mutate: sendMessage, isPending: isSending } = useSendMessage(conversationId || '');
   const { mutate: createConversation, isPending: isCreating } = useCreateConversation();
+  const { mutate: updateConversation } = useUpdateConversation();
+  const { data: conversation } = useConversation(conversationId || null);
+  const setActiveConversationId = useUIStore((s) => s.setActiveConversationId);
+
+  // Sync the active conversation into the global store so ActivityPanel can react
+  useEffect(() => {
+    setActiveConversationId(conversationId ?? null);
+    return () => setActiveConversationId(null);
+  }, [conversationId, setActiveConversationId]);
 
   // Auto-scroll
   useEffect(() => {
@@ -54,6 +64,16 @@ export function ConversationPanel({ conversationId }: ConversationPanelProps) {
     }
 
     sendMessage({ content }, {
+      onSuccess: () => {
+        // Auto-name: if this is the first message and title is still generic, use message content as title
+        const isGenericTitle = !conversation?.title || 
+          conversation.title === 'New Conversation' || 
+          conversation.title === 'Recovered Conversation';
+        const isFirstMessage = !messages || messages.length === 0;
+        if (conversationId && isFirstMessage && isGenericTitle) {
+          updateConversation({ id: conversationId, title: content.slice(0, 40).trim() });
+        }
+      },
       onError: (err) => {
         toast.error("Failed to send message: " + (err as Error).message);
       }
@@ -66,7 +86,7 @@ export function ConversationPanel({ conversationId }: ConversationPanelProps) {
         <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto pb-8">
           <EmptyState 
             icon={Bot}
-            title="What would you like Jarvis to help you with today?"
+            title="What would you like Sammy to help you with today?"
             description="Select a conversation from the sidebar or start a new one to begin."
           />
           <div className="flex flex-wrap gap-2 justify-center mt-6 max-w-lg">

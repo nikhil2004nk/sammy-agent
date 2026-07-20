@@ -3,7 +3,8 @@ import { ExecutionContext } from '../../../common/execution-context';
 import { ConversationService } from '../../conversation/conversation.service';
 import { AgentStepService } from './agent-step.service';
 import { ActionExecutorService } from './action-executor.service';
-import { AssistantMessage, UserMessage, RunStatus } from '../../conversation/conversation.types';
+import { AssistantMessage, UserMessage } from '../../conversation/conversation.types';
+import { ExecutionTrackerService } from '../../execution/execution-tracker.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -14,13 +15,15 @@ export class AgentLoopService {
     private readonly conversationService: ConversationService,
     private readonly agentStepService: AgentStepService,
     private readonly actionExecutor: ActionExecutorService,
+    private readonly executionTracker: ExecutionTrackerService,
   ) {}
 
   /**
    * Orchestrates the autonomous agent reasoning loop.
    */
   async runLoop(context: ExecutionContext, conversationId: string, userInput: string): Promise<string> {
-    const run = this.conversationService.createRun(conversationId, { traceId: context.traceId });
+    const run = await this.executionTracker.createRun(context.runId, conversationId, { traceId: context.traceId });
+    await this.executionTracker.updateRunStatus(run.id, 'running');
     this.logger.log(`Starting run '${run.id}' for conversation '${conversationId}'`);
 
     try {
@@ -29,8 +32,8 @@ export class AgentLoopService {
         id: crypto.randomUUID(),
         role: 'user',
         createdAt: Date.now(),
-        content: userInput
-      };
+        parts: [{ type: 'text', content: userInput }]
+      } as any;
       this.conversationService.appendMessage(conversationId, userMessage);
 
       let stepCount = 0;
@@ -44,7 +47,22 @@ export class AgentLoopService {
         const messages = this.conversationService.getMessages(conversationId);
         
         // 3. Evaluate state and get next action
+        const reasoningNode = await this.executionTracker.createNode(
+          context.runId,
+          'reasoning',
+          `Reasoning Step ${stepCount}`,
+          undefined,
+          undefined,
+          context.agentId
+        );
+
         const action = await this.agentStepService.executeStep(context, messages);
+
+        await this.executionTracker.updateNodeStatus(
+          reasoningNode.id,
+          'completed',
+          action
+        );
 
         // 4. Handle LLM responses (Finish or Respond)
         if (action.type === 'finish' || action.type === 'respond') {
@@ -52,17 +70,18 @@ export class AgentLoopService {
             id: crypto.randomUUID(),
             role: 'assistant',
             createdAt: Date.now(),
-            content: action.content
-          };
+            status: 'completed',
+            parts: [{ type: 'text', content: action.content }]
+          } as any;
           this.conversationService.appendMessage(conversationId, assistantMsg);
-          this.conversationService.updateRunStatus(run.id, 'completed', 'Completed');
+          await this.executionTracker.updateRunStatus(run.id, 'completed', 'Completed');
           return action.content;
         }
 
         // 5. Handle Cancellations
         if (action.type === 'cancel') {
           this.logger.warn(`Run ${run.id} cancelled: ${action.reason}`);
-          this.conversationService.updateRunStatus(run.id, 'cancelled', action.reason);
+          await this.executionTracker.updateRunStatus(run.id, 'cancelled', action.reason);
           return `Cancelled: ${action.reason}`;
         }
 
@@ -92,19 +111,19 @@ export class AgentLoopService {
 
         // Future support for human_approval
         if (action.type === 'human_approval') {
-          this.conversationService.updateRunStatus(run.id, 'requires_action', 'HumanApprovalRequired');
+          await this.executionTracker.updateRunStatus(run.id, 'requires_action', 'HumanApprovalRequired');
           return `Human approval required: ${action.context}`;
         }
       }
 
       // Max steps reached
       this.logger.warn(`Run ${run.id} reached max reasoning steps (${maxReasoningSteps})`);
-      this.conversationService.updateRunStatus(run.id, 'failed', 'MaxStepsReached');
+      await this.executionTracker.updateRunStatus(run.id, 'failed', 'MaxStepsReached');
       return "I've reached my internal reasoning limit and must stop.";
 
     } catch (error: any) {
       this.logger.error(`Run ${run.id} failed`, error);
-      this.conversationService.updateRunStatus(run.id, 'failed', error.message || 'Unknown error');
+      await this.executionTracker.updateRunStatus(run.id, 'failed', error.message || 'Unknown error');
       throw error;
     }
   }

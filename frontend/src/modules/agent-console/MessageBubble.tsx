@@ -14,10 +14,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   
   // For now, concatenate all text parts. Later, render parts based on type.
-  const content = message.parts
-    .filter(p => p.type === 'text')
-    .map(p => p.content as string)
-    .join('\n');
+  const content = message.parts 
+    ? message.parts
+        .filter(p => p.type === 'text')
+        .map(p => p.content as string)
+        .join('\n')
+    : (message as any).content || '';
 
   return (
     <div className={cn(
@@ -34,7 +36,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       <div className="flex-1 space-y-2 overflow-hidden min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-semibold text-sm">
-            {isUser ? 'You' : 'Jarvis'}
+            {isUser ? 'You' : 'Sammy'}
           </span>
           <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
             {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

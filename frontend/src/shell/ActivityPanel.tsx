@@ -3,18 +3,16 @@
 import { useUIStore } from '@/store/ui';
 import { Activity, FileText, Database } from 'lucide-react';
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
-import { mockRun } from '@/domains/execution/mock';
+import { useLiveRun } from '@/domains/execution/api';
 import { useState } from 'react';
 
 type Tab = 'timeline' | 'tools' | 'context' | 'logs';
 
 export function ActivityPanel() {
-  const { activityPanelOpen } = useUIStore();
+  const { activityPanelOpen, activeConversationId } = useUIStore();
   const [activeTab, setActiveTab] = useState<Tab>('timeline');
 
-  // In reality, this would be fetched via React Query based on the active run ID.
-  // const { data: run } = useActiveRun();
-  const activeRun = mockRun;
+  const activeRun = useLiveRun(activeConversationId);
 
   if (!activityPanelOpen) return null;
 

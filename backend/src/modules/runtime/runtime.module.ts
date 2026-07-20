@@ -10,9 +10,10 @@ import { ResolverModule } from '../resolver/resolver.module';
 import { AgentStepService } from './agent-loop/agent-step.service';
 import { ActionExecutorService } from './agent-loop/action-executor.service';
 import { AgentLoopService } from './agent-loop/agent-loop.service';
+import { ExecutionModule } from '../execution/execution.module';
 
 @Module({
-  imports: [PromptsModule, LlmModule, ToolsModule, EventsModule, forwardRef(() => ConversationModule), ResolverModule],
+  imports: [PromptsModule, LlmModule, ToolsModule, EventsModule, forwardRef(() => ConversationModule), ResolverModule, ExecutionModule],
   providers: [ExecutionService, PlannerService, AgentStepService, ActionExecutorService, AgentLoopService],
   exports: [ExecutionService, AgentLoopService],
 })

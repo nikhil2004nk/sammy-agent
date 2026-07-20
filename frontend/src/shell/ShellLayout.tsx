@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Sidebar } from './Sidebar';
+import { SecondarySidebar } from './SecondarySidebar';
 import { Topbar } from './Topbar';
 import { ActivityPanel } from './ActivityPanel';
 import { StatusBar } from './StatusBar';
@@ -20,6 +21,7 @@ export function ShellLayout({ children }: ShellLayoutProps) {
       
       {/* Left Sidebar */}
       <Sidebar />
+      <SecondarySidebar />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">

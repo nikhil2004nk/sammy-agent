@@ -39,7 +39,7 @@ export function Composer({ onSend, isStreaming = false }: ComposerProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message Jarvis..."
+          placeholder="Message Sammy..."
           className="flex-1 max-h-72 min-h-[40px] resize-none bg-transparent py-2.5 px-2 focus:outline-none text-sm leading-relaxed"
           minRows={1}
           maxRows={10}
@@ -68,7 +68,7 @@ export function Composer({ onSend, isStreaming = false }: ComposerProps) {
         )}
       </div>
       <div className="text-center mt-2 text-[10px] text-muted-foreground">
-        Jarvis can make mistakes. Verify critical information.
+        Sammy can make mistakes. Verify critical information.
       </div>
     </div>
   );

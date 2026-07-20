@@ -26,7 +26,7 @@ export const mockRun: Run = {
       type: 'reasoning',
       content: 'I need to find recent invoices in the user\'s Gmail. I will use the gmail.search tool.',
       status: 'Completed',
-      agentName: 'Jarvis',
+      agentName: 'Sammy',
       startedAt: new Date(now - 1900).toISOString(),
       finishedAt: new Date(now - 1600).toISOString(),
       durationMs: 300,
@@ -37,7 +37,7 @@ export const mockRun: Run = {
       type: 'tool',
       name: 'gmail.search',
       status: 'Completed',
-      agentName: 'Jarvis',
+      agentName: 'Sammy',
       arguments: {
         query: 'subject:invoice has:attachment',
         maxResults: 5
@@ -68,7 +68,7 @@ export const mockRun: Run = {
       type: 'reasoning',
       content: 'I found 14 invoices. I will summarize the results for the user.',
       status: 'Completed',
-      agentName: 'Jarvis',
+      agentName: 'Sammy',
       startedAt: new Date(now - 1000).toISOString(),
       finishedAt: new Date(now - 500).toISOString(),
       durationMs: 500,

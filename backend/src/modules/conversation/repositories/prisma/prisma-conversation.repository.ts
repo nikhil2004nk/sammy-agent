@@ -82,6 +82,7 @@ export class PrismaConversationRepository implements IConversationRepository {
   private mapToDomain(prismaModel: any): Conversation {
     return {
       id: prismaModel.id,
+      title: prismaModel.title ?? 'Untitled Conversation',
       createdAt: prismaModel.createdAt.getTime(),
       updatedAt: prismaModel.updatedAt.getTime(),
       metadata: prismaModel.metadata,

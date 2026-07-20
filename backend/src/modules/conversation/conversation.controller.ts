@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Delete } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ExecutionService } from '../runtime/execution/execution.service';
 import { ExecutionContext } from '../../common/execution-context';
@@ -13,49 +13,57 @@ export class ConversationController {
 
   @Get()
   getAllConversations() {
-    // Basic array return for now (in memory map hack)
-    // @ts-ignore
-    return Array.from(this.conversationService.conversations.values());
+    return this.conversationService.getAllConversations().map(c => ({
+      ...c,
+      createdAt: new Date(c.createdAt).toISOString(),
+      updatedAt: new Date(c.updatedAt).toISOString(),
+    }));
   }
 
   @Post()
   createConversation(@Body() body: any) {
-    return this.conversationService.createConversation(body);
+    const conv = this.conversationService.createConversation(body);
+    return {
+      ...conv,
+      createdAt: new Date(conv.createdAt).toISOString(),
+      updatedAt: new Date(conv.updatedAt).toISOString(),
+    };
   }
 
   @Get(':id')
   getConversation(@Param('id') id: string) {
-    return this.conversationService.getConversation(id);
+    const conv = this.conversationService.getConversation(id);
+    return {
+      ...conv,
+      createdAt: new Date(conv.createdAt).toISOString(),
+      updatedAt: new Date(conv.updatedAt).toISOString(),
+    };
+  }
+
+  @Patch(':id')
+  updateConversation(@Param('id') id: string, @Body() body: { title?: string }) {
+    const conv = this.conversationService.updateConversation(id, body);
+    return {
+      ...conv,
+      createdAt: new Date(conv.createdAt).toISOString(),
+      updatedAt: new Date(conv.updatedAt).toISOString(),
+    };
   }
 
   @Delete(':id')
   deleteConversation(@Param('id') id: string) {
-    // Hacky delete for in-memory
-    // @ts-ignore
-    this.conversationService.conversations.delete(id);
+    this.conversationService.deleteConversation(id);
     return { success: true };
   }
 
   @Get(':id/messages')
   getMessages(@Param('id') id: string) {
-    try {
-      return this.conversationService.getMessages(id);
-    } catch {
-      return [];
-    }
+    return this.conversationService.getMessages(id);
   }
 
   @Post(':id/messages')
   async sendMessage(@Param('id') id: string, @Body() body: { content: string }) {
-    // 1. Save user message
-    this.conversationService.appendMessage(id, {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: body.content,
-      createdAt: Date.now(),
-    } as any);
-
-    // 2. Create Context
+    // 1. Create Context
     const context: ExecutionContext = {
       traceId: crypto.randomUUID(),
       conversationId: id,
@@ -64,22 +72,28 @@ export class ConversationController {
       agentId: crypto.randomUUID(),
       modelConfig: {
         provider: 'openai',
-        model: 'gpt-4o',
+        model: 'openai/gpt-4o', // OpenRouter compatible model string
         temperature: 0.7,
         maxTokens: 2000
       },
     };
 
-    // 3. Execute
+    // 2. Execute (AgentLoopService will save both the user message and assistant message)
     const response = await this.executionService.executeTurn(context, body.content);
 
-    // 4. Return new assistant message
-    return {
+    // 3. Construct and return new assistant message for the UI
+    const assistantMsg = {
       id: crypto.randomUUID(),
       role: 'assistant',
       status: 'completed',
-      createdAt: new Date().toISOString(),
+      createdAt: Date.now(), 
       parts: [{ type: 'text', content: response }]
+    };
+
+    // 5. Return new assistant message (ensure ISO string for frontend format)
+    return {
+      ...assistantMsg,
+      createdAt: new Date(assistantMsg.createdAt).toISOString()
     };
   }
 }

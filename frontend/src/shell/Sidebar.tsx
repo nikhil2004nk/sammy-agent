@@ -20,28 +20,28 @@ export function Sidebar() {
   ] as const;
 
   return (
-    <aside className="w-64 border-r bg-background flex flex-col h-full">
-      <div className="p-4 border-b">
-        <h2 className="font-semibold text-lg">Agent Console</h2>
+    <aside className="w-16 border-r bg-background flex flex-col h-full items-center py-4">
+      <div className="mb-8 flex items-center justify-center w-full">
+        <Bot className="w-8 h-8 text-primary" />
       </div>
       
-      <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-1 px-2">
+      <nav className="flex-1 w-full overflow-y-auto">
+        <ul className="space-y-4 px-2 w-full flex flex-col items-center">
           {navItems.map((item) => {
             const isActive = sidebarMode === item.mode;
             return (
-              <li key={item.mode}>
+              <li key={item.mode} className="w-full flex justify-center">
                 <button
                   onClick={() => setSidebarMode(item.mode)}
+                  title={item.label}
                   className={cn(
-                    "flex items-center w-full gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+                    "flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200",
                     isActive 
-                      ? "bg-primary text-primary-foreground font-medium" 
+                      ? "bg-primary text-primary-foreground shadow-md" 
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
+                  <item.icon className="w-5 h-5" />
                 </button>
               </li>
             );

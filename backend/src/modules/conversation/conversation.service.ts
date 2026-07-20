@@ -8,13 +8,14 @@ export class ConversationService {
   private messages = new Map<string, Message[]>();
   private runs = new Map<string, Run>();
 
-  createConversation(metadata?: Record<string, any>): Conversation {
+  createConversation(body?: { title?: string; metadata?: Record<string, any> }): Conversation {
     const id = crypto.randomUUID();
     const conversation: Conversation = {
       id,
+      title: body?.title || 'New Conversation',
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      metadata,
+      metadata: body?.metadata,
       version: 1,
     };
     
@@ -23,28 +24,55 @@ export class ConversationService {
     return conversation;
   }
 
+  getAllConversations(): Conversation[] {
+    return Array.from(this.conversations.values()).sort((a, b) => b.updatedAt - a.updatedAt);
+  }
+
   getConversation(id: string): Conversation {
-    const conversation = this.conversations.get(id);
-    if (!conversation) {
-      throw new NotFoundException(`Conversation ${id} not found`);
-    }
-    return conversation;
+    // Auto-recover after server restart so deep links still work
+    this.ensureConversationExists(id);
+    return this.conversations.get(id)!;
+  }
+
+  updateConversation(id: string, updates: { title?: string }): Conversation {
+    this.ensureConversationExists(id);
+    const conv = this.conversations.get(id)!;
+    if (updates.title !== undefined) conv.title = updates.title;
+    conv.updatedAt = Date.now();
+    conv.version += 1;
+    return conv;
   }
 
   getMessages(conversationId: string): Message[] {
-    const msgs = this.messages.get(conversationId);
-    if (!msgs) {
-      throw new NotFoundException(`Messages for conversation ${conversationId} not found`);
-    }
+    // Auto-recover if the in-memory store was wiped (e.g. server restart)
+    this.ensureConversationExists(conversationId);
+    const msgs = this.messages.get(conversationId)!;
     // Return a shallow copy so callers don't mutate the array
     return [...msgs];
   }
 
-  appendMessage(conversationId: string, message: Message): Message {
-    const msgs = this.messages.get(conversationId);
-    if (!msgs) {
-      throw new NotFoundException(`Conversation ${conversationId} not found`);
+  /**
+   * Ensure a conversation slot exists. If the conversation was created before
+   * a backend restart (in-memory wipe), recreate it transparently.
+   */
+  ensureConversationExists(id: string): void {
+    if (!this.conversations.has(id)) {
+      const conversation: Conversation = {
+        id,
+        title: 'Recovered Conversation',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        version: 1,
+      };
+      this.conversations.set(id, conversation);
+      this.messages.set(id, []);
     }
+  }
+
+  appendMessage(conversationId: string, message: Message): Message {
+    // Auto-recover if the in-memory store was wiped (e.g. server restart)
+    this.ensureConversationExists(conversationId);
+    const msgs = this.messages.get(conversationId)!;
 
     const newMsg = { ...message, id: message.id || crypto.randomUUID(), createdAt: message.createdAt || Date.now() };
     msgs.push(newMsg as Message);
@@ -61,6 +89,11 @@ export class ConversationService {
       throw new NotFoundException(`Conversation ${conversationId} not found`);
     }
     this.messages.set(conversationId, []);
+  }
+
+  deleteConversation(id: string): void {
+    this.conversations.delete(id);
+    this.messages.delete(id);
   }
 
   // --- Runs ---

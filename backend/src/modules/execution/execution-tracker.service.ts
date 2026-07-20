@@ -1,0 +1,86 @@
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { IExecutionStoreToken } from './persistence/execution-store.interface';
+import type { IExecutionStore } from './persistence/execution-store.interface';
+import { Run, RunStatus, ExecutionNode, ExecutionNodeType, ExecutionNodeStatus, RunWithNodes } from './execution.types';
+import * as crypto from 'crypto';
+
+@Injectable()
+export class ExecutionTrackerService {
+  constructor(
+    @Inject(IExecutionStoreToken)
+    private readonly store: IExecutionStore,
+  ) {}
+
+  async createRun(runId: string, conversationId: string, metadata?: Record<string, any>): Promise<Run> {
+    const run: Run = {
+      id: runId,
+      conversationId,
+      status: 'queued',
+      createdAt: Date.now(),
+      metadata,
+      version: 1,
+    };
+    await this.store.createRun(run);
+    return run;
+  }
+
+  async updateRunStatus(runId: string, status: RunStatus, terminationReason?: string): Promise<void> {
+    const updates: Partial<Run> = { status };
+    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+      updates.endedAt = Date.now();
+    }
+    if (terminationReason) {
+      updates.terminationReason = terminationReason;
+    }
+    await this.store.updateRun(runId, updates);
+  }
+
+  async getRunsForConversation(conversationId: string): Promise<Run[]> {
+    return this.store.getRunsByConversationId(conversationId);
+  }
+
+  async getRunWithNodes(runId: string): Promise<RunWithNodes> {
+    const run = await this.store.getRun(runId);
+    if (!run) throw new NotFoundException(`Run ${runId} not found`);
+    const nodes = await this.store.getNodesByRunId(runId);
+    return { ...run, nodes };
+  }
+
+  async createNode(
+    runId: string, 
+    type: ExecutionNodeType, 
+    title: string, 
+    payload?: any, 
+    parentId?: string,
+    agentName?: string
+  ): Promise<ExecutionNode> {
+    const node: ExecutionNode = {
+      id: crypto.randomUUID(),
+      runId,
+      parentId,
+      type,
+      status: 'pending',
+      title,
+      payload,
+      startedAt: Date.now(),
+      agentName
+    };
+    await this.store.createNode(node);
+    return node;
+  }
+
+  async updateNodeStatus(nodeId: string, status: ExecutionNodeStatus, payload?: any): Promise<void> {
+    const updates: Partial<ExecutionNode> = { status };
+    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+      const node = await this.store.getNode(nodeId);
+      if (node) {
+        updates.finishedAt = Date.now();
+        updates.duration = updates.finishedAt - node.startedAt;
+      }
+    }
+    if (payload !== undefined) {
+      updates.payload = payload;
+    }
+    await this.store.updateNode(nodeId, updates);
+  }
+}

@@ -1,0 +1,42 @@
+### API Tests for Sammy Agent Backend
+
+# Base URL
+@baseUrl = http://localhost:3001
+
+### 1. Create a New Conversation
+# @name createConversation
+POST {{baseUrl}}/conversations
+Content-Type: application/json
+
+{
+  "title": "My Test Conversation"
+}
+
+###
+
+# Extract the ID from the previous request for future requests
+@conversationId = {{createConversation.response.body.id}}
+
+### 2. Get All Conversations
+GET {{baseUrl}}/conversations
+
+###
+
+### 3. Get the Specific Conversation
+GET {{baseUrl}}/conversations/{{conversationId}}
+
+###
+
+### 4. Send a Message
+# Note: This will trigger the Execution Loop!
+POST {{baseUrl}}/conversations/{{conversationId}}/messages
+Content-Type: application/json
+
+{
+  "content": "Hello Jarvis, can you check my recent emails?"
+}
+
+###
+
+### 5. Get Messages from Conversation
+GET {{baseUrl}}/conversations/{{conversationId}}/messages
