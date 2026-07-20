@@ -12,8 +12,9 @@ export class ConversationController {
   ) {}
 
   @Get()
-  getAllConversations() {
-    return this.conversationService.getAllConversations().map(c => ({
+  async getAllConversations() {
+    const convs = await this.conversationService.getAllConversations();
+    return convs.map(c => ({
       ...c,
       createdAt: new Date(c.createdAt).toISOString(),
       updatedAt: new Date(c.updatedAt).toISOString(),
@@ -21,8 +22,8 @@ export class ConversationController {
   }
 
   @Post()
-  createConversation(@Body() body: any) {
-    const conv = this.conversationService.createConversation(body);
+  async createConversation(@Body() body: any) {
+    const conv = await this.conversationService.createConversation(body);
     return {
       ...conv,
       createdAt: new Date(conv.createdAt).toISOString(),
@@ -31,8 +32,8 @@ export class ConversationController {
   }
 
   @Get(':id')
-  getConversation(@Param('id') id: string) {
-    const conv = this.conversationService.getConversation(id);
+  async getConversation(@Param('id') id: string) {
+    const conv = await this.conversationService.getConversation(id);
     return {
       ...conv,
       createdAt: new Date(conv.createdAt).toISOString(),
@@ -41,8 +42,8 @@ export class ConversationController {
   }
 
   @Patch(':id')
-  updateConversation(@Param('id') id: string, @Body() body: { title?: string }) {
-    const conv = this.conversationService.updateConversation(id, body);
+  async updateConversation(@Param('id') id: string, @Body() body: { title?: string }) {
+    const conv = await this.conversationService.updateConversation(id, body);
     return {
       ...conv,
       createdAt: new Date(conv.createdAt).toISOString(),
@@ -51,14 +52,14 @@ export class ConversationController {
   }
 
   @Delete(':id')
-  deleteConversation(@Param('id') id: string) {
-    this.conversationService.deleteConversation(id);
+  async deleteConversation(@Param('id') id: string) {
+    await this.conversationService.deleteConversation(id);
     return { success: true };
   }
 
   @Get(':id/messages')
-  getMessages(@Param('id') id: string) {
-    return this.conversationService.getMessages(id);
+  async getMessages(@Param('id') id: string) {
+    return await this.conversationService.getMessages(id);
   }
 
   @Post(':id/messages')

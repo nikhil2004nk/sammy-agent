@@ -75,8 +75,12 @@ export class McpAdapterService {
     try {
       const response = await this.client.listResources();
       return response.resources.map(res => McpMapper.mapResource(res));
-    } catch (error) {
-      this.logger.error(`[Adapter] Resource discovery failed for '${this.serverId}'`, error);
+    } catch (error: any) {
+      if (error?.code === -32601) {
+        this.logger.debug(`[Adapter] Resources not supported by server '${this.serverId}'`);
+      } else {
+        this.logger.error(`[Adapter] Resource discovery failed for '${this.serverId}'`, error);
+      }
       return [];
     }
   }
@@ -85,8 +89,12 @@ export class McpAdapterService {
     try {
       const response = await this.client.listPrompts();
       return response.prompts.map(prompt => McpMapper.mapPrompt(prompt));
-    } catch (error) {
-      this.logger.error(`[Adapter] Prompt discovery failed for '${this.serverId}'`, error);
+    } catch (error: any) {
+      if (error?.code === -32601) {
+        this.logger.debug(`[Adapter] Prompts not supported by server '${this.serverId}'`);
+      } else {
+        this.logger.error(`[Adapter] Prompt discovery failed for '${this.serverId}'`, error);
+      }
       return [];
     }
   }
