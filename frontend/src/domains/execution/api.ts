@@ -16,6 +16,8 @@ import type {
   RunCompletedPayload,
   RunFailedPayload
 } from './types';
+import { conversationKeys } from '../conversation/api';
+import type { Message } from '../conversation/types';
 
 // ---- Backend DTO shapes ----
 
@@ -139,9 +141,6 @@ export function useLiveRun(conversationId: string | null): Run | null {
       return data.map(adaptRun);
     },
     enabled: !!conversationId,
-    // We can still poll the list lightly in case a run is created in another tab,
-    // or rely on a push mechanism for new runs later.
-    refetchInterval: 5000, 
   });
 
   const latestRun = runs?.[0] ?? null;
@@ -227,8 +226,23 @@ export function useLiveRun(conversationId: string | null): Run | null {
             }
             case 'message.delta': {
               const p = parsed.payload as MessageDeltaPayload;
-              // If there's a specific nodeId (reasoning), append to it. 
-              // Otherwise, append to the last reasoning node.
+              
+              // 1. Update the chat messages directly
+              queryClient.setQueryData<Message[]>(conversationKeys.messages(latestRun.conversationId), (oldMessages) => {
+                if (!oldMessages) return oldMessages;
+                return oldMessages.map((msg, idx, arr) => {
+                  // Find the last assistant message (which should be the optimistic one)
+                  const isTarget = msg.role === 'assistant' && idx === arr.findLastIndex(x => x.role === 'assistant');
+                  if (isTarget) {
+                    // Remove 'Thinking...' placeholder if it's the first delta
+                    const currentContent = msg.parts[0]?.content === 'Thinking...' ? '' : (msg.parts[0]?.content || '');
+                    return { ...msg, parts: [{ type: 'text', content: currentContent + p.delta }] };
+                  }
+                  return msg;
+                });
+              });
+
+              // 2. Update the run nodes
               return {
                 ...oldData,
                 nodes: oldData.nodes.map((n, idx, arr) => {
@@ -242,6 +256,20 @@ export function useLiveRun(conversationId: string | null): Run | null {
             }
             case 'message.completed': {
               const p = parsed.payload as MessageCompletedPayload;
+              
+              // 1. Update the chat messages directly
+              queryClient.setQueryData<Message[]>(conversationKeys.messages(latestRun.conversationId), (oldMessages) => {
+                if (!oldMessages) return oldMessages;
+                return oldMessages.map((msg, idx, arr) => {
+                  const isTarget = msg.role === 'assistant' && idx === arr.findLastIndex(x => x.role === 'assistant');
+                  if (isTarget) {
+                    return { ...msg, status: 'completed', parts: [{ type: 'text', content: p.content }] };
+                  }
+                  return msg;
+                });
+              });
+
+              // 2. Update the run nodes
               return {
                 ...oldData,
                 nodes: oldData.nodes.map((n, idx, arr) => {
