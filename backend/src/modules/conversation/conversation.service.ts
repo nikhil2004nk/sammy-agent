@@ -15,6 +15,7 @@ export class ConversationService {
       createdAt: Date.now(),
       updatedAt: Date.now(),
       metadata,
+      version: 1,
     };
     
     this.conversations.set(id, conversation);
@@ -50,6 +51,7 @@ export class ConversationService {
     
     const conv = this.conversations.get(conversationId)!;
     conv.updatedAt = Date.now();
+    conv.version += 1;
 
     return newMsg as Message;
   }
@@ -71,6 +73,7 @@ export class ConversationService {
       status: 'running',
       createdAt: Date.now(),
       metadata,
+      version: 1,
     };
     this.runs.set(id, run);
     return run;

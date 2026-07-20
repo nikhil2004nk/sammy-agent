@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ExecutionService } from './execution/execution.service';
 import { PlannerService } from './planner/planner.service';
 import { PromptsModule } from '../prompts/prompts.module';
@@ -12,7 +12,7 @@ import { ActionExecutorService } from './agent-loop/action-executor.service';
 import { AgentLoopService } from './agent-loop/agent-loop.service';
 
 @Module({
-  imports: [PromptsModule, LlmModule, ToolsModule, EventsModule, ConversationModule, ResolverModule],
+  imports: [PromptsModule, LlmModule, ToolsModule, EventsModule, forwardRef(() => ConversationModule), ResolverModule],
   providers: [ExecutionService, PlannerService, AgentStepService, ActionExecutorService, AgentLoopService],
   exports: [ExecutionService, AgentLoopService],
 })

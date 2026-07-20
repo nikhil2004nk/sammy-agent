@@ -23,6 +23,9 @@ export function ReasoningCard({ node }: ReasoningCardProps) {
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               Reasoning
             </span>
+            <span className="opacity-70 text-[10px]" suppressHydrationWarning>
+              {node.startedAt ? new Date(node.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
+            </span>
             {node.agentName && (
               <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
                 {node.agentName}

@@ -3,6 +3,7 @@ export type ExecutionMode = 'interactive' | 'background' | 'batch' | 'agent';
 export interface ExecutionContext {
   readonly conversationId: string;
   readonly runId: string;
+  readonly agentId: string;
   readonly tenantId?: string;
   readonly userId: string;
   readonly traceId: string;

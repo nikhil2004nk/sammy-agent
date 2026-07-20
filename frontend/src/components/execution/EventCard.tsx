@@ -14,7 +14,7 @@ export function EventCard({ node }: EventCardProps) {
       </div>
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <span>{node.name || 'System Event'}</span>
-        <span className="opacity-50">
+        <span className="opacity-50" suppressHydrationWarning>
           {new Date(node.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
         </span>
       </div>

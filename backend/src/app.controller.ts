@@ -23,7 +23,7 @@ export class AppController {
       conversationId: body.conversationId || crypto.randomUUID(),
       userId: 'test-user-id', // Would come from Auth JWT
       agentId: body.agentId || crypto.randomUUID(),
-      toolCalls: [],
+      runId: crypto.randomUUID(),
       modelConfig: {
         provider: 'openai', // Extracted from Agent DB config
         model: 'gpt-4o',

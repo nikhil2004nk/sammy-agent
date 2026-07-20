@@ -40,23 +40,31 @@ export function ToolExecutionCard({ node }: ToolExecutionCardProps) {
         "flex-1 min-w-0 border rounded-lg p-3 shadow-sm transition-colors",
         isFailed ? "bg-destructive/5 border-destructive/20" : "bg-card hover:bg-muted/30"
       )}>
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-1 xl:gap-2 mb-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span 
               onClick={copyToolName}
-              className="text-sm font-semibold text-foreground cursor-pointer hover:underline decoration-muted-foreground/30 underline-offset-2"
+              className="text-sm font-semibold text-foreground cursor-pointer hover:underline decoration-muted-foreground/30 underline-offset-2 break-all"
               title="Copy Tool Name"
             >
               {node.name || 'Unknown Tool'}
             </span>
             {node.agentName && (
-              <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+              <span className="text-[10px] bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded whitespace-nowrap">
                 {node.agentName}
               </span>
             )}
           </div>
           
-          <div className="flex items-center gap-2 text-xs">
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs whitespace-nowrap shrink-0">
+            {node.startedAt && (
+              <span className="text-muted-foreground flex items-center gap-1">
+                <span className="opacity-60" suppressHydrationWarning>
+                  {new Date(node.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              </span>
+            )}
+
             {node.durationMs && (
               <span className="text-muted-foreground flex items-center gap-1">
                 <Clock className="w-3 h-3" />
