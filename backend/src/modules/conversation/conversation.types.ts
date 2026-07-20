@@ -48,6 +48,7 @@ export interface Run {
   endedAt?: number;
   terminationReason?: string;
   metadata?: Record<string, any>;
+  version: number;
 }
 
 export interface Conversation {
@@ -55,4 +56,5 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   metadata?: Record<string, any>;
+  version: number;
 }
