@@ -47,55 +47,101 @@ model ModelConfig {
 
 model Conversation {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agentId   String   @db.Uuid
-  userId    String   // Identifier from auth system
+  agentId   String?  @db.Uuid
+  tenantId  String?  @db.Uuid
+  userId    String
   title     String?
   metadata  Json?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  agent      Agent       @relation(fields: [agentId], references: [id])
-  messages   Message[]
-  executions Execution[]
+  agent     Agent?      @relation(fields: [agentId], references: [id])
+  runs      Run[]
+  messages  Message[]
 }
 
-model Message {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversationId String   @db.Uuid
-  role           String   // 'user', 'assistant', 'system', 'tool'
-  content        String   @db.Text
-  metadata       Json?    // Stores token counts, etc.
-  createdAt      DateTime @default(now())
+model Run {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId    String   @db.Uuid
+  status            String   // 'running', 'completed', 'failed', 'cancelled', 'requires_action'
+  terminationReason String?
+  tokenUsage        Int      @default(0)
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  endedAt           DateTime?
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messages          Message[]
+  reasoningSteps    ReasoningStep[]
+  events            Event[]
 }
 
-model Execution {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  traceId        String   @unique
-  conversationId String   @db.Uuid
-  status         String   // 'started', 'completed', 'failed'
-  durationMs     Int?
-  tokensUsed     Int?
-  cost           Float?
-  error          String?  @db.Text
-  createdAt      DateTime @default(now())
-  completedAt    DateTime?
-
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  toolCalls      ToolCall[]
-}
-
-model ToolCall {
+model ReasoningStep {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  executionId String   @db.Uuid
-  toolName    String
-  args        Json
-  result      Json?
-  error       String?  @db.Text
-  durationMs  Int?
+  runId       String   @db.Uuid
+  stepIndex   Int
+  status      String   // 'started', 'completed', 'failed'
   createdAt   DateTime @default(now())
   completedAt DateTime?
 
-  execution   Execution @relation(fields: [executionId], references: [id])
+  run            Run             @relation(fields: [runId], references: [id], onDelete: Cascade)
+  toolExecutions ToolExecution[]
 }
+
+model Message {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId    String   @db.Uuid
+  runId             String?  @db.Uuid
+  role              String   // 'user', 'assistant', 'system', 'tool'
+  content           String?  @db.Text
+  structuredContent Json?    // To hold objects like tool results, complex schemas
+  toolCalls         Json?
+  toolCallId        String?
+  toolName          String?
+  metadata          Json?
+  createdAt         DateTime @default(now())
+
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  run               Run?         @relation(fields: [runId], references: [id], onDelete: SetNull)
+}
+
+model ToolExecution {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reasoningStepId String   @db.Uuid
+  toolName        String
+  arguments       Json
+  result          Json?
+  success         Boolean
+  error           String?  @db.Text
+  durationMs      Int?
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+
+  reasoningStep   ReasoningStep @relation(fields: [reasoningStepId], references: [id], onDelete: Cascade)
+}
+
+enum EventType {
+  RunStarted
+  RunCompleted
+  ReasoningStarted
+  ReasoningCompleted
+  ToolStarted
+  ToolCompleted
+  ToolFailed
+  ContextBuilt
+  LLMCalled
+  LLMResponded
+  HumanApprovalRequested
+  PlannerInvoked
+}
+
+model Event {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId       String   @db.Uuid
+  eventType   EventType
+  payload     Json?
+  createdAt   DateTime @default(now())
+
+  run         Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+

@@ -1,19 +1,22 @@
-export interface ModelConfig {
-  provider: string;
-  model: string;
-  temperature: number;
-  maxTokens: number;
-}
+export type ExecutionMode = 'interactive' | 'background' | 'batch' | 'agent';
 
 export interface ExecutionContext {
-  traceId: string;
-  conversationId: string;
-  userId: string;
-  tenantId?: string;
-  agentId: string;
-  toolCalls: any[];
-  toolResults?: { toolName: string; result: any }[];
-  modelConfig: ModelConfig;
-  memoryData?: any;
-  metadata: Record<string, any>;
+  readonly conversationId: string;
+  readonly runId: string;
+  readonly tenantId?: string;
+  readonly userId: string;
+  readonly traceId: string;
+  readonly sessionId?: string;
+  readonly requestId?: string;
+  readonly executionMode?: ExecutionMode;
+  readonly metadata?: Record<string, any>;
+  readonly attributes?: Record<string, any>;
+  
+  // Optional configuration that can be passed per-run
+  readonly modelConfig?: {
+    provider: string;
+    model: string;
+    temperature: number;
+    maxTokens: number;
+  };
 }
