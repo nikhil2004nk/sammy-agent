@@ -55,23 +55,28 @@ export function ConversationPanel({ conversationId }: ConversationPanelProps) {
 
   if (!conversationId) {
     return (
-      <div className="flex flex-col h-full items-center justify-center bg-background">
-        <EmptyState 
-          icon={Bot}
-          title="What would you like Jarvis to help you with today?"
-          description="Select a conversation from the sidebar or start a new one to begin."
-        />
-        <div className="flex flex-wrap gap-2 justify-center mt-6 max-w-lg">
-          {['Summarize my Gmail', 'Search GitHub', 'Analyze a document', 'Plan a workflow'].map((suggestion) => (
-            <button 
-              key={suggestion}
-              onClick={() => handleSend(suggestion)}
-              disabled={isCreating}
-              className="px-4 py-2 rounded-full border bg-muted/50 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              {suggestion}
-            </button>
-          ))}
+      <div className="flex flex-col h-full bg-background relative">
+        <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto pb-8">
+          <EmptyState 
+            icon={Bot}
+            title="What would you like Jarvis to help you with today?"
+            description="Select a conversation from the sidebar or start a new one to begin."
+          />
+          <div className="flex flex-wrap gap-2 justify-center mt-6 max-w-lg">
+            {['Summarize my Gmail', 'Search GitHub', 'Analyze a document', 'Plan a workflow'].map((suggestion) => (
+              <button 
+                key={suggestion}
+                onClick={() => handleSend(suggestion)}
+                disabled={isCreating}
+                className="px-4 py-2 rounded-full border bg-muted/50 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="shrink-0 bg-gradient-to-t from-background to-transparent pt-4">
+          <Composer onSend={handleSend} isStreaming={isSending} />
         </div>
       </div>
     );
