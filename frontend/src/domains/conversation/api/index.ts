@@ -90,6 +90,9 @@ export function useSendMessage(conversationId: string) {
       await queryClient.cancelQueries({ queryKey: conversationKeys.messages(conversationId) });
       const previousMessages = queryClient.getQueryData<Message[]>(conversationKeys.messages(conversationId));
 
+      // Trigger a run list fetch immediately so we get the new run ID
+      queryClient.invalidateQueries({ queryKey: ['runs', conversationId] });
+
       const optimisticMessage: Message = {
         id: crypto.randomUUID(),
         role: 'user',
@@ -122,6 +125,7 @@ export function useSendMessage(conversationId: string) {
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: conversationKeys.messages(conversationId) });
       queryClient.invalidateQueries({ queryKey: conversationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['runs', conversationId] });
     },
   });
 }

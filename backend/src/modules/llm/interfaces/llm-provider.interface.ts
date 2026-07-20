@@ -19,5 +19,11 @@ export interface ILLMResponse {
 }
 
 export interface ILLMProvider {
-  generateResponse(messages: ILLMMessage[], temperature: number, maxTokens: number, tools?: ILLMTool[]): Promise<ILLMResponse>;
+  generateResponse(
+    messages: ILLMMessage[], 
+    temperature: number, 
+    maxTokens: number, 
+    tools?: ILLMTool[],
+    onToken?: (token: string) => void
+  ): Promise<ILLMResponse>;
 }

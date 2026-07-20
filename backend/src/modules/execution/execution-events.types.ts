@@ -1,43 +1,4 @@
-export type ExecutionStatus = 'Queued' | 'Running' | 'Completed' | 'Failed' | 'Cancelled';
-
-export type ExecutionNodeType = 'reasoning' | 'tool' | 'planner' | 'approval' | 'workflow' | 'reflection' | 'agent' | 'event';
-
-export interface ExecutionNode {
-  id: string;
-  runId: string;
-  type: ExecutionNodeType;
-  status: ExecutionStatus;
-  
-  // Optional name for identifying the specific tool, agent, etc.
-  name?: string;
-  
-  // Future-proofing: which agent executed this node
-  agentName?: string;
-  
-  // Core data payload
-  content?: string; // For text/reasoning
-  arguments?: unknown; // JSON args for tools
-  result?: unknown; // JSON output from tools or planners
-  
-  // Timing
-  startedAt: string;
-  finishedAt?: string;
-  durationMs?: number;
-
-  // Tree structuring (for future complex workflows)
-  parentId?: string;
-}
-
-export interface Run {
-  id: string;
-  conversationId: string;
-  status: ExecutionStatus;
-  startedAt: string;
-  finishedAt?: string;
-  durationMs?: number;
-  totalTools: number;
-  nodes: ExecutionNode[]; // Tree of execution nodes
-}
+import { ExecutionNodeType, ExecutionNodeStatus, RunStatus } from './execution.types';
 
 export type ExecutionEventType =
   | 'run.started'
@@ -48,6 +9,7 @@ export type ExecutionEventType =
   | 'node.updated'
   | 'message.delta'
   | 'message.completed'
+  // Reserved for future
   | 'planner.started'
   | 'planner.completed'
   | 'workflow.started'
@@ -64,7 +26,7 @@ export interface RunStartedPayload {
 }
 
 export interface RunUpdatedPayload {
-  status: ExecutionStatus;
+  status: RunStatus;
   toolCount?: number;
   reasoningCount?: number;
 }
@@ -84,7 +46,7 @@ export interface NodeCreatedPayload {
   id: string;
   type: ExecutionNodeType;
   title: string;
-  status: ExecutionStatus;
+  status: ExecutionNodeStatus;
   startedAt: number;
   payload?: any;
   agentName?: string;
@@ -93,14 +55,14 @@ export interface NodeCreatedPayload {
 
 export interface NodeUpdatedPayload {
   id: string;
-  status: ExecutionStatus;
+  status: ExecutionNodeStatus;
   finishedAt?: number;
   duration?: number;
   payload?: any;
 }
 
 export interface MessageDeltaPayload {
-  nodeId?: string;
+  nodeId?: string; // The reasoning node this message is attached to, if any
   delta: string;
 }
 
@@ -118,6 +80,7 @@ export type ExecutionEventPayloadMap = {
   'node.updated': NodeUpdatedPayload;
   'message.delta': MessageDeltaPayload;
   'message.completed': MessageCompletedPayload;
+  // Others can just use unknown for now
   'planner.started': unknown;
   'planner.completed': unknown;
   'workflow.started': unknown;

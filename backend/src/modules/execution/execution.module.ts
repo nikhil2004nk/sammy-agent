@@ -5,6 +5,7 @@ import { IExecutionStoreToken } from './persistence/execution-store.interface';
 import { InMemoryExecutionStore } from './persistence/in-memory-execution.store';
 import { PrismaExecutionStore } from './persistence/prisma-execution.store';
 import { DatabaseModule } from '../database/database.module';
+import { ExecutionStreamService } from './execution-stream.service';
 
 @Module({
   imports: [DatabaseModule],
@@ -14,8 +15,9 @@ import { DatabaseModule } from '../database/database.module';
     {
       provide: IExecutionStoreToken,
       useClass: PrismaExecutionStore
-    }
+    },
+    ExecutionStreamService
   ],
-  exports: [ExecutionTrackerService]
+  exports: [ExecutionTrackerService, ExecutionStreamService]
 })
 export class ExecutionModule {}

@@ -33,7 +33,13 @@ export class OpenAiProvider implements ILLMProvider {
     }
   }
 
-  async generateResponse(messages: ILLMMessage[], temperature: number, maxTokens: number, tools?: ILLMTool[]): Promise<ILLMResponse> {
+  async generateResponse(
+    messages: ILLMMessage[], 
+    temperature: number, 
+    maxTokens: number, 
+    tools?: ILLMTool[],
+    onToken?: (token: string) => void
+  ): Promise<ILLMResponse> {
     if (this.isMock || !this.openai) {
       this.logger.log('Generating response with OpenAI provider (Mock Mode)');
       // Simulate network delay
@@ -53,17 +59,41 @@ export class OpenAiProvider implements ILLMProvider {
     })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
     try {
-      const response = await this.openai.chat.completions.create({
-        model: 'gpt-4o', // or gpt-4-turbo
-        messages: openAiMessages,
-        temperature,
-        max_tokens: maxTokens,
-      });
+      if (onToken) {
+        const stream = await this.openai.chat.completions.create({
+          model: 'gpt-4o', // or gpt-4-turbo
+          messages: openAiMessages,
+          temperature,
+          max_tokens: maxTokens,
+          stream: true,
+        });
 
-      return {
-        content: response.choices[0].message.content || '',
-        tokensUsed: response.usage?.total_tokens || 0,
-      };
+        let fullContent = '';
+        for await (const chunk of stream) {
+          const delta = chunk.choices[0]?.delta?.content || '';
+          if (delta) {
+            fullContent += delta;
+            onToken(delta);
+          }
+        }
+        
+        return {
+          content: fullContent,
+          tokensUsed: 0, // Streaming doesn't always return usage easily
+        };
+      } else {
+        const response = await this.openai.chat.completions.create({
+          model: 'gpt-4o',
+          messages: openAiMessages,
+          temperature,
+          max_tokens: maxTokens,
+        });
+
+        return {
+          content: response.choices[0].message.content || '',
+          tokensUsed: response.usage?.total_tokens || 0,
+        };
+      }
     } catch (error: any) {
       this.logger.error(`OpenAI API error: ${error.message}`, error.stack);
       throw error;

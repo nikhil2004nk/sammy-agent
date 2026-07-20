@@ -3,12 +3,14 @@ import { IExecutionStoreToken } from './persistence/execution-store.interface';
 import type { IExecutionStore } from './persistence/execution-store.interface';
 import { Run, RunStatus, ExecutionNode, ExecutionNodeType, ExecutionNodeStatus, RunWithNodes } from './execution.types';
 import * as crypto from 'crypto';
+import { ExecutionStreamService } from './execution-stream.service';
 
 @Injectable()
 export class ExecutionTrackerService {
   constructor(
     @Inject(IExecutionStoreToken)
     private readonly store: IExecutionStore,
+    private readonly stream: ExecutionStreamService,
   ) {}
 
   async createRun(runId: string, conversationId: string, metadata?: Record<string, any>): Promise<Run> {
@@ -21,6 +23,9 @@ export class ExecutionTrackerService {
       version: 1,
     };
     await this.store.createRun(run);
+
+    this.stream.publish(runId, 'run.started', { conversationId });
+
     return run;
   }
 
@@ -37,6 +42,27 @@ export class ExecutionTrackerService {
       updates.terminationReason = terminationReason;
     }
     await this.store.updateRun(runId, updates);
+
+    // Emit event
+    if (status === 'completed') {
+      this.stream.publish(runId, 'run.completed', {
+        durationMs: updates.durationMs,
+        terminationReason,
+      });
+    } else if (status === 'failed' || status === 'cancelled') {
+      this.stream.publish(runId, 'run.failed', {
+        durationMs: updates.durationMs,
+        error: terminationReason,
+        terminationReason,
+      });
+    } else {
+      const updatedRun = await this.store.getRun(runId);
+      this.stream.publish(runId, 'run.updated', {
+        status,
+        toolCount: updatedRun?.toolCount,
+        reasoningCount: updatedRun?.reasoningCount,
+      });
+    }
   }
 
   async getRunsForConversation(conversationId: string): Promise<Run[]> {
@@ -81,6 +107,17 @@ export class ExecutionTrackerService {
       }
     }
 
+    this.stream.publish(runId, 'node.created', {
+      id: node.id,
+      type: node.type,
+      title: node.title,
+      status: node.status,
+      startedAt: node.startedAt,
+      payload: node.payload,
+      agentName: node.agentName,
+      parentId: node.parentId,
+    });
+
     return node;
   }
 
@@ -97,5 +134,16 @@ export class ExecutionTrackerService {
       updates.payload = payload;
     }
     await this.store.updateNode(nodeId, updates);
+
+    const node = await this.store.getNode(nodeId);
+    if (node) {
+      this.stream.publish(node.runId, 'node.updated', {
+        id: node.id,
+        status: node.status,
+        finishedAt: node.finishedAt,
+        duration: node.duration,
+        payload: node.payload,
+      });
+    }
   }
 }

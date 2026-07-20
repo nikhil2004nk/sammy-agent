@@ -5,6 +5,7 @@ import { Message } from '../../conversation/conversation.types';
 import { PromptBuilderService } from '../../prompts/prompt-builder.service';
 import { LlmFactoryService } from '../../llm/factory/llm-factory.service';
 import { CapabilityResolverService } from '../../resolver/capability-resolver.service';
+import { ExecutionStreamService } from '../../execution/execution-stream.service';
 
 @Injectable()
 export class AgentStepService {
@@ -14,6 +15,7 @@ export class AgentStepService {
     private readonly promptBuilder: PromptBuilderService,
     private readonly llmFactory: LlmFactoryService,
     private readonly capabilityResolver: CapabilityResolverService,
+    private readonly stream: ExecutionStreamService,
   ) {}
 
   /**
@@ -35,7 +37,12 @@ export class AgentStepService {
       llmMessages, 
       context.modelConfig?.temperature || 0, 
       context.modelConfig?.maxTokens || 1000,
-      llmTools
+      llmTools,
+      (delta) => {
+        this.stream.publish(context.runId, 'message.delta', {
+          delta,
+        });
+      }
     );
 
     // 4. Determine Action
@@ -49,6 +56,11 @@ export class AgentStepService {
 
     if (response.content) {
       this.logger.debug(`LLM decided to respond: ${response.content.substring(0, 50)}...`);
+      
+      this.stream.publish(context.runId, 'message.completed', {
+        content: response.content
+      });
+
       return {
         type: 'finish',
         content: response.content

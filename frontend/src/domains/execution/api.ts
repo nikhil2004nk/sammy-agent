@@ -1,8 +1,21 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { apiClient } from '@/services/api';
-import type { Run, ExecutionStatus, ExecutionNodeType } from './types';
+import type { 
+  Run, 
+  ExecutionStatus, 
+  ExecutionNodeType,
+  ExecutionEvent,
+  NodeCreatedPayload,
+  NodeUpdatedPayload,
+  MessageDeltaPayload,
+  MessageCompletedPayload,
+  RunUpdatedPayload,
+  RunCompletedPayload,
+  RunFailedPayload
+} from './types';
 
 // ---- Backend DTO shapes ----
 
@@ -115,15 +128,10 @@ export function useRun(runId: string | null) {
   });
 }
 
-/**
- * useLiveRun — fetches the latest run for a conversation and adaptively polls it.
- * Polling rate adapts based on run status:
- *   Queued  → 500ms
- *   Running → 1000ms
- *   Terminal (Completed/Failed/Cancelled) → stops polling
- */
 export function useLiveRun(conversationId: string | null): Run | null {
-  // Step 1: fetch the list of runs (light poll to detect new runs)
+  const queryClient = useQueryClient();
+
+  // Step 1: fetch the list of runs (to detect new runs and get the latest run ID)
   const { data: runs } = useQuery<Run[]>({
     queryKey: ['runs', conversationId],
     queryFn: async () => {
@@ -131,12 +139,14 @@ export function useLiveRun(conversationId: string | null): Run | null {
       return data.map(adaptRun);
     },
     enabled: !!conversationId,
-    refetchInterval: 2000, // check for new runs every 2s
+    // We can still poll the list lightly in case a run is created in another tab,
+    // or rely on a push mechanism for new runs later.
+    refetchInterval: 5000, 
   });
 
   const latestRun = runs?.[0] ?? null;
 
-  // Step 2: fetch the full run detail (with nodes) and adapt polling to status
+  // Step 2: fetch the full run detail (with nodes) initially
   const { data: detailedRun } = useQuery<Run>({
     queryKey: ['run', latestRun?.id],
     queryFn: async () => {
@@ -144,8 +154,123 @@ export function useLiveRun(conversationId: string | null): Run | null {
       return adaptRun(data);
     },
     enabled: !!latestRun?.id,
-    refetchInterval: pollingInterval(latestRun?.status),
+    staleTime: Infinity, // Rely on SSE for updates
   });
+
+  // Step 3: Open EventSource to listen for updates
+  useEffect(() => {
+    if (!latestRun?.id) return;
+
+    // We only connect if the run isn't terminal, 
+    // or if you want to be safe, just connect and let the server close it or just listen.
+    if (detailedRun && (detailedRun.status === 'Completed' || detailedRun.status === 'Failed' || detailedRun.status === 'Cancelled')) {
+      return;
+    }
+
+    // Connect to SSE stream
+    const eventSource = new EventSource(`http://localhost:3001/runs/${latestRun.id}/stream`); // Adjust host as needed in real env
+
+    eventSource.onopen = () => {
+      // On reconnect, we fetch the run to reconcile any missed events
+      queryClient.invalidateQueries({ queryKey: ['run', latestRun.id] });
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const parsed: ExecutionEvent = JSON.parse(event.data);
+        
+        queryClient.setQueryData<Run>(['run', latestRun.id], (oldData) => {
+          if (!oldData) return oldData;
+
+          switch (parsed.type) {
+            case 'run.updated': {
+              const p = parsed.payload as RunUpdatedPayload;
+              return { ...oldData, status: p.status, totalTools: p.toolCount ?? oldData.totalTools };
+            }
+            case 'run.completed': {
+              const p = parsed.payload as RunCompletedPayload;
+              return { ...oldData, status: 'Completed', durationMs: p.durationMs ?? oldData.durationMs };
+            }
+            case 'run.failed': {
+              const p = parsed.payload as RunFailedPayload;
+              return { ...oldData, status: 'Failed', durationMs: p.durationMs ?? oldData.durationMs };
+            }
+            case 'node.created': {
+              const p = parsed.payload as NodeCreatedPayload;
+              const newNode = {
+                id: p.id,
+                runId: oldData.id,
+                parentId: p.parentId,
+                type: p.type,
+                status: p.status,
+                name: p.title,
+                agentName: p.agentName,
+                content: p.type === 'reasoning' ? (typeof p.payload === 'string' ? p.payload : JSON.stringify(p.payload ?? '')) : undefined,
+                arguments: p.type === 'tool' ? p.payload : undefined,
+                startedAt: new Date(p.startedAt).toISOString(),
+              };
+              return { ...oldData, nodes: [...oldData.nodes, newNode] };
+            }
+            case 'node.updated': {
+              const p = parsed.payload as NodeUpdatedPayload;
+              return {
+                ...oldData,
+                nodes: oldData.nodes.map(n => 
+                  n.id === p.id ? { 
+                    ...n, 
+                    status: p.status, 
+                    finishedAt: p.finishedAt ? new Date(p.finishedAt).toISOString() : n.finishedAt,
+                    durationMs: p.duration ?? n.durationMs
+                  } : n
+                )
+              };
+            }
+            case 'message.delta': {
+              const p = parsed.payload as MessageDeltaPayload;
+              // If there's a specific nodeId (reasoning), append to it. 
+              // Otherwise, append to the last reasoning node.
+              return {
+                ...oldData,
+                nodes: oldData.nodes.map((n, idx, arr) => {
+                  const isTarget = p.nodeId ? n.id === p.nodeId : (n.type === 'reasoning' && idx === arr.findLastIndex(x => x.type === 'reasoning'));
+                  if (isTarget) {
+                    return { ...n, content: (n.content || '') + p.delta };
+                  }
+                  return n;
+                })
+              };
+            }
+            case 'message.completed': {
+              const p = parsed.payload as MessageCompletedPayload;
+              return {
+                ...oldData,
+                nodes: oldData.nodes.map((n, idx, arr) => {
+                  const isTarget = p.nodeId ? n.id === p.nodeId : (n.type === 'reasoning' && idx === arr.findLastIndex(x => x.type === 'reasoning'));
+                  if (isTarget) {
+                    return { ...n, content: p.content };
+                  }
+                  return n;
+                })
+              };
+            }
+            default:
+              return oldData;
+          }
+        });
+      } catch (e) {
+        console.error('Failed to parse SSE event', e);
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error('SSE Error', error);
+      // EventSource automatically attempts reconnect
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [latestRun?.id, detailedRun?.status, queryClient]);
 
   return detailedRun ?? latestRun;
 }

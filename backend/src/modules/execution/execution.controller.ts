@@ -1,11 +1,16 @@
-import { Controller, Get, Post, Param } from '@nestjs/common';
+import { Controller, Get, Post, Param, Sse, MessageEvent } from '@nestjs/common';
 import { ExecutionTrackerService } from './execution-tracker.service';
+import { ExecutionStreamService } from './execution-stream.service';
 import { RunDto, ExecutionNodeDto } from './dto/run.dto';
 import * as crypto from 'crypto';
+import { Observable, map } from 'rxjs';
 
 @Controller()
 export class ExecutionController {
-  constructor(private readonly executionTracker: ExecutionTrackerService) {}
+  constructor(
+    private readonly executionTracker: ExecutionTrackerService,
+    private readonly streamService: ExecutionStreamService
+  ) {}
 
   @Get('conversations/:conversationId/runs')
   async getRuns(@Param('conversationId') conversationId: string): Promise<RunDto[]> {
@@ -56,5 +61,14 @@ export class ExecutionController {
       duration: undefined,
       nodes: [],
     };
+  }
+
+  @Sse('runs/:runId/stream')
+  streamRun(@Param('runId') runId: string): Observable<MessageEvent> {
+    return this.streamService.subscribeToRun(runId).pipe(
+      map(event => ({
+        data: event as any, // NestJS maps this to JSON string
+      }))
+    );
   }
 }
