@@ -6,14 +6,14 @@ import { LlmModule } from '../llm/llm.module';
 import { ToolsModule } from '../tools/tools.module';
 import { EventsModule } from '../events/events.module';
 import { ConversationModule } from '../conversation/conversation.module';
-import { ResolverModule } from '../resolver/resolver.module';
 import { AgentStepService } from './agent-loop/agent-step.service';
 import { ActionExecutorService } from './agent-loop/action-executor.service';
 import { AgentLoopService } from './agent-loop/agent-loop.service';
 import { ExecutionModule } from '../execution/execution.module';
+import { RegistryModule } from '../registry/registry.module';
 
 @Module({
-  imports: [PromptsModule, LlmModule, ToolsModule, EventsModule, forwardRef(() => ConversationModule), ResolverModule, ExecutionModule],
+  imports: [PromptsModule, LlmModule, ToolsModule, EventsModule, forwardRef(() => ConversationModule), ExecutionModule, RegistryModule],
   providers: [ExecutionService, PlannerService, AgentStepService, ActionExecutorService, AgentLoopService],
   exports: [ExecutionService, AgentLoopService],
 })

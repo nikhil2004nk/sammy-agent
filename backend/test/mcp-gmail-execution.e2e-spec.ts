@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { INestApplication } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventsModule } from '../src/modules/events/events.module';
 import { McpModule } from '../src/modules/mcp/mcp.module';
@@ -6,7 +7,7 @@ import { RegistryModule } from '../src/modules/registry/registry.module';
 import { PermissionsModule } from '../src/modules/permissions/permissions.module';
 import { ToolsModule } from '../src/modules/tools/tools.module';
 import { ToolExecutorService } from '../src/modules/tools/tool-executor.service';
-import { ToolRegistryService } from '../src/modules/registry/tool-registry.service';
+import { ToolCatalogService } from '../src/modules/registry/tool-catalog.service';
 import { ExecutionContext } from '../src/common/execution-context';
 import * as path from 'path';
 
@@ -31,9 +32,9 @@ const testMcpConfig = () => ({
 const shouldRun = process.env.RUN_GMAIL_TESTS === 'true';
 
 (shouldRun ? describe : describe.skip)('Real Gmail MCP Execution (e2e)', () => {
-  let app: any;
-  let executor: ToolExecutorService;
-  let registry: ToolRegistryService;
+  let app: INestApplication;
+  let toolCatalog: ToolCatalogService;
+  let toolExecutor: ToolExecutorService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -50,8 +51,8 @@ const shouldRun = process.env.RUN_GMAIL_TESTS === 'true';
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    executor = app.get(ToolExecutorService);
-    registry = app.get(ToolRegistryService);
+    toolCatalog = app.get<ToolCatalogService>(ToolCatalogService);
+    toolExecutor = app.get<ToolExecutorService>(ToolExecutorService);
 
     // Wait for discovery to complete
     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -74,7 +75,7 @@ const shouldRun = process.env.RUN_GMAIL_TESTS === 'true';
   };
 
   it('should list messages successfully', async () => {
-    const result = await executor.executeTool(mockContext, 'gmail_real.gmail.list_messages', { maxResults: 2 });
+    const result = await toolExecutor.executeTool(mockContext, 'gmail_real.gmail.list_messages', { maxResults: 2 });
     expect(result.success).toBe(true);
     expect(result.data).toBeDefined();
     
@@ -83,7 +84,7 @@ const shouldRun = process.env.RUN_GMAIL_TESTS === 'true';
   });
 
   it('should create a draft safely', async () => {
-    const result = await executor.executeTool(mockContext, 'gmail_real.gmail.create_draft', {
+    const result = await toolExecutor.executeTool(mockContext, 'gmail_real.gmail.create_draft', {
       to: 'test@example.com',
       subject: 'Hello from Jarvis Tests',
       body: 'This is an automated test draft.'
@@ -95,7 +96,7 @@ const shouldRun = process.env.RUN_GMAIL_TESTS === 'true';
   });
 
   it('should return standardized failure on invalid tool', async () => {
-    const result = await executor.executeTool(mockContext, 'gmail_real.gmail.invalid_tool', {});
+    const result = await toolExecutor.executeTool(mockContext, 'gmail_real.gmail.invalid_tool', {});
     expect(result.success).toBe(false);
     expect(result.error).toContain('is not available or unauthorized');
   });

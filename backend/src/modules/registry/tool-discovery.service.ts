@@ -1,17 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ToolRegistryService } from '../registry/tool-registry.service';
-import { ResourceRegistryService } from '../registry/resource-registry.service';
-import { PromptRegistryService } from '../registry/prompt-registry.service';
+import { ToolCatalogService } from './tool-catalog.service';
+import { ResourceRegistryService } from './resource-registry.service';
+import { PromptRegistryService } from './prompt-registry.service';
 import { ToolMetadata, McpResource, McpPrompt } from '../mcp/types/mcp.types';
 import { ExecutionContext } from '../../common/execution-context';
 import { PermissionService } from '../permissions/permission.service';
 
 @Injectable()
-export class CapabilityResolverService {
-  private readonly logger = new Logger(CapabilityResolverService.name);
+export class ToolDiscoveryService {
+  private readonly logger = new Logger(ToolDiscoveryService.name);
 
   constructor(
-    private readonly toolRegistry: ToolRegistryService,
+    private readonly toolCatalog: ToolCatalogService,
     private readonly resourceRegistry: ResourceRegistryService,
     private readonly promptRegistry: PromptRegistryService,
     private readonly permissionService: PermissionService
@@ -21,13 +21,13 @@ export class CapabilityResolverService {
    * Resolves a tool by checking its existence and enforcing permissions.
    */
   async resolveTool(context: ExecutionContext, namespacedName: string): Promise<ToolMetadata | null> {
-    const tool = this.toolRegistry.getTool(namespacedName);
+    const tool = this.toolCatalog.getTool(namespacedName);
     if (!tool) {
       this.logger.debug(`Tool '${namespacedName}' not found.`);
       return null;
     }
 
-    if (!tool.enabled) {
+    if (tool.enabled === false) {
       this.logger.debug(`Tool '${namespacedName}' is disabled.`);
       return null;
     }
@@ -45,17 +45,17 @@ export class CapabilityResolverService {
    * Returns a filtered list of all tools available to the context.
    */
   async getAvailableTools(context: ExecutionContext): Promise<ToolMetadata[]> {
-    const allTools = this.toolRegistry.getAllTools();
+    const allTools = this.toolCatalog.getAllTools();
     const availableTools: ToolMetadata[] = [];
     
     for (const tool of allTools) {
-      if (tool.enabled && await this.permissionService.checkToolPermission(context, tool)) {
+      if (tool.enabled !== false && await this.permissionService.checkToolPermission(context, tool)) {
         availableTools.push(tool);
       }
     }
     
     // Sort by priority (higher priority first)
-    return availableTools.sort((a, b) => b.priority - a.priority);
+    return availableTools.sort((a, b) => (b.priority || 0) - (a.priority || 0));
   }
 
   resolveResource(uri: string): McpResource | null {

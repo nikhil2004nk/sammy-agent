@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ToolExecutorService } from './tool-executor.service';
-import { ResolverModule } from '../resolver/resolver.module';
+import { RegistryModule } from '../registry/registry.module';
 import { McpModule } from '../mcp/mcp.module';
 import { EventsModule } from '../events/events.module';
 import { ConnectionsModule } from '../connections/connections.module';
 
 @Module({
   imports: [
-    ResolverModule,
+    RegistryModule,
     McpModule,
     EventsModule,
     ConnectionsModule

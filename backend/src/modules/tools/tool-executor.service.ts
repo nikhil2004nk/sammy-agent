@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ExecutionContext } from '../../common/execution-context';
-import { CapabilityResolverService } from '../resolver/capability-resolver.service';
+import { ToolDiscoveryService } from '../registry/tool-discovery.service';
 import { McpManagerService } from '../mcp/manager/mcp-manager.service';
 import { EventBusService } from '../events/event-bus.service';
 import { ToolExecutionResult } from '../mcp/types/mcp.types';
@@ -12,7 +12,7 @@ export class ToolExecutorService {
   private readonly logger = new Logger(ToolExecutorService.name);
 
   constructor(
-    private readonly resolver: CapabilityResolverService,
+    private readonly discovery: ToolDiscoveryService,
     private readonly mcpManager: McpManagerService,
     private readonly eventBus: EventBusService,
     private readonly connectionFactory: ConnectionFactory,
@@ -26,7 +26,7 @@ export class ToolExecutorService {
     let currentServerId = 'system';
     try {
       // 1. Resolve tool (handles registry lookup, permissions, and enabled status)
-      const toolMetadata = await this.resolver.resolveTool(context, namespacedToolName);
+      const toolMetadata = await this.discovery.resolveTool(context, namespacedToolName);
       if (!toolMetadata) {
         throw new Error(`Tool '${namespacedToolName}' is not available or unauthorized.`);
       }

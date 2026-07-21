@@ -17,7 +17,6 @@ import { PromptsModule } from './modules/prompts/prompts.module';
 import { ToolsModule } from './modules/tools/tools.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { RegistryModule } from './modules/registry/registry.module';
-import { ResolverModule } from './modules/resolver/resolver.module';
 
 @Module({
   imports: [
@@ -35,7 +34,7 @@ import { ResolverModule } from './modules/resolver/resolver.module';
     AgentsModule,
     ConversationModule,
     RuntimeModule,
-    ResolverModule,
+    RegistryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

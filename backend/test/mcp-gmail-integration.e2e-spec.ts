@@ -4,14 +4,13 @@ import { ConfigModule } from '@nestjs/config';
 import { McpModule } from '../src/modules/mcp/mcp.module';
 import { RegistryModule } from '../src/modules/registry/registry.module';
 import { EventsModule } from '../src/modules/events/events.module';
-import { ResolverModule } from '../src/modules/resolver/resolver.module';
 import { PermissionsModule } from '../src/modules/permissions/permissions.module';
-import { ToolRegistryService } from '../src/modules/registry/tool-registry.service';
+import { ToolCatalogService } from '../src/modules/registry/tool-catalog.service';
 import mcpConfig from '../src/modules/mcp/config/mcp.config';
 
-describe('Gmail MCP End-to-End Validation (e2e)', () => {
-  let app: any;
-  let registry: ToolRegistryService;
+describe('Gmail MCP End-toEnd Validation (e2e)', () => {
+  let app: INestApplication;
+  let toolCatalog: ToolCatalogService;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -20,7 +19,6 @@ describe('Gmail MCP End-to-End Validation (e2e)', () => {
         EventsModule,
         McpModule,
         RegistryModule,
-        ResolverModule,
         PermissionsModule,
       ],
     }).compile();
@@ -28,7 +26,8 @@ describe('Gmail MCP End-to-End Validation (e2e)', () => {
     app = moduleFixture.createNestApplication();
     await app.init();
 
-    registry = app.get(ToolRegistryService);
+    toolCatalog = app.get<ToolCatalogService>(ToolCatalogService);
+    const mcpManager = app.get(require('../src/modules/mcp/manager/mcp-manager.service').McpManagerService);
 
     // Wait for the async startup to initialize the Gmail MCP server and run discovery
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -38,8 +37,8 @@ describe('Gmail MCP End-to-End Validation (e2e)', () => {
     await app.close();
   });
 
-  it('Scenario 1: Manager Connects Gmail -> Discovery Runs -> Registry Contains Gmail Tools', () => {
-    const tools = registry.getAllTools();
+  it('Scenario 1: Gmail Server Started -> Tools registered', () => {
+    const tools = toolCatalog.getAllTools();
     
     // Validate we discovered tools
     expect(tools.length).toBeGreaterThan(0);
@@ -74,7 +73,7 @@ describe('Gmail MCP End-to-End Validation (e2e)', () => {
     // Wait for discovery to process
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const tools = registry.getAllTools();
+    const tools = toolCatalog.getAllTools();
     const gmailTools = tools.filter(t => t.serverId === 'gmail');
     
     // Count should still be exactly 5, no duplicates

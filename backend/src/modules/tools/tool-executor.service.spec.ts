@@ -1,30 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ToolExecutorService } from './tool-executor.service';
-import { ToolRegistryService } from '../registry/tool-registry.service';
-import { PermissionService } from '../permissions/permission.service';
+import { ToolDiscoveryService } from '../registry/tool-discovery.service';
 import { McpManagerService } from '../mcp/manager/mcp-manager.service';
 import { EventBusService } from '../events/event-bus.service';
 import { ExecutionContext } from '../../common/execution-context';
 import { ToolMetadata } from '../mcp/types/mcp.types';
+import { ConnectionFactory } from '../connections/factories/connection.factory';
 
 describe('ToolExecutorService', () => {
   let service: ToolExecutorService;
-  let registry: ToolRegistryService;
-  let permissionService: PermissionService;
+  let discovery: ToolDiscoveryService;
   let mcpManager: McpManagerService;
   let eventBus: EventBusService;
+  let connectionFactory: ConnectionFactory;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ToolExecutorService,
         {
-          provide: ToolRegistryService,
-          useValue: { getTool: jest.fn() },
-        },
-        {
-          provide: PermissionService,
-          useValue: { checkToolPermission: jest.fn() },
+          provide: ToolDiscoveryService,
+          useValue: { resolveTool: jest.fn() },
         },
         {
           provide: McpManagerService,
@@ -38,14 +34,18 @@ describe('ToolExecutorService', () => {
             emitToolExecutionFailed: jest.fn(),
           },
         },
+        {
+          provide: ConnectionFactory,
+          useValue: { resolveConnection: jest.fn() },
+        }
       ],
     }).compile();
 
     service = module.get<ToolExecutorService>(ToolExecutorService);
-    registry = module.get<ToolRegistryService>(ToolRegistryService);
-    permissionService = module.get<PermissionService>(PermissionService);
+    discovery = module.get<ToolDiscoveryService>(ToolDiscoveryService);
     mcpManager = module.get<McpManagerService>(McpManagerService);
     eventBus = module.get<EventBusService>(EventBusService);
+    connectionFactory = module.get<ConnectionFactory>(ConnectionFactory);
   });
 
   afterEach(() => {
@@ -77,8 +77,8 @@ describe('ToolExecutorService', () => {
   };
 
   it('should successfully execute a tool', async () => {
-    (registry.getTool as jest.Mock).mockReturnValue(mockTool);
-    (permissionService.checkToolPermission as jest.Mock).mockResolvedValue(true);
+    (discovery.resolveTool as jest.Mock).mockResolvedValue(mockTool);
+    (connectionFactory.resolveConnection as jest.Mock).mockResolvedValue({ serverId: 'test-server', transport: { type: 'stdio' } });
     
     const mockAdapter = {
       executeTool: jest.fn().mockResolvedValue({ success: true, data: 'result' })
@@ -88,38 +88,25 @@ describe('ToolExecutorService', () => {
     const result = await service.executeTool(mockContext, 'test-server.test_action', { arg1: 'val1' });
 
     expect(eventBus.emitToolExecutionStarted).toHaveBeenCalled();
-    expect(registry.getTool).toHaveBeenCalledWith('test-server.test_action');
-    expect(permissionService.checkToolPermission).toHaveBeenCalled();
+    expect(discovery.resolveTool).toHaveBeenCalledWith(mockContext, 'test-server.test_action');
     expect(mcpManager.getAdapter).toHaveBeenCalledWith('test-server');
-    expect(mockAdapter.executeTool).toHaveBeenCalledWith('test_action', { arg1: 'val1' });
+    expect(mockAdapter.executeTool).toHaveBeenCalledWith('test_action', { arg1: 'val1' }, expect.any(Object));
     expect(eventBus.emitToolExecutionCompleted).toHaveBeenCalled();
     expect(result.success).toBe(true);
   });
 
   it('should fail and return error if tool not found', async () => {
-    (registry.getTool as jest.Mock).mockReturnValue(undefined);
+    (discovery.resolveTool as jest.Mock).mockResolvedValue(null);
 
     const result = await service.executeTool(mockContext, 'test-server.test_action', {});
     
     expect(result.success).toBe(false);
-    expect(result.error).toContain('not found in registry');
-    expect(eventBus.emitToolExecutionFailed).toHaveBeenCalled();
-  });
-
-  it('should fail and return error if permission denied', async () => {
-    (registry.getTool as jest.Mock).mockReturnValue(mockTool);
-    (permissionService.checkToolPermission as jest.Mock).mockResolvedValue(false);
-
-    const result = await service.executeTool(mockContext, 'test-server.test_action', {});
-    
-    expect(result.success).toBe(false);
-    expect(result.error).toContain('is not authorized');
+    expect(result.error).toContain('is not available or unauthorized');
     expect(eventBus.emitToolExecutionFailed).toHaveBeenCalled();
   });
 
   it('should fail and return error if adapter missing', async () => {
-    (registry.getTool as jest.Mock).mockReturnValue(mockTool);
-    (permissionService.checkToolPermission as jest.Mock).mockResolvedValue(true);
+    (discovery.resolveTool as jest.Mock).mockResolvedValue(mockTool);
     (mcpManager.getAdapter as jest.Mock).mockReturnValue(undefined);
 
     const result = await service.executeTool(mockContext, 'test-server.test_action', {});

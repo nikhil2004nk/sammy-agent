@@ -2,17 +2,26 @@ export interface ToolMetadata {
   id: string;
   name: string;
   description: string;
+  provider?: string;
+  server?: string;
+  category?: string;
   inputSchema: any;
   outputSchema?: any;
+  requiresApproval?: boolean;
+  supportsStreaming?: boolean;
+  supportsBatch?: boolean;
+  isReadOnly?: boolean;
+  estimatedLatency?: number;
+  estimatedCost?: number;
   permissions?: string[];
-  serverId?: string;
-  namespace: string;
-  version: string;
-  enabled: boolean;
-  source: 'mcp' | 'local' | 'plugin';
-  priority: number;
-  origin: string;
-  loadedAt: Date;
+  serverId?: string; // Legacy, replace with 'server' eventually
+  namespace?: string;
+  version?: string;
+  enabled?: boolean;
+  source?: 'mcp' | 'local' | 'plugin';
+  priority?: number;
+  origin?: string;
+  loadedAt?: Date;
 }
 
 export interface ToolExecutionResult {
