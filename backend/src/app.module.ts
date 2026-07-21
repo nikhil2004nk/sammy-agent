@@ -1,6 +1,4 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
@@ -28,7 +26,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
     DatabaseModule,
     AuthModule,
     WorkspacesModule,
-    
+
     LlmModule,
     PromptsModule,
     ToolsModule,
@@ -40,7 +38,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
     WorkflowsModule,
     SchedulerModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
-export class AppModule {}
+export class AppModule { }

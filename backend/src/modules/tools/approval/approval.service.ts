@@ -80,6 +80,10 @@ export class ApprovalService {
     }
   }
 
+  async getById(approvalId: string) {
+    return this.prisma.approvalRequest.findUnique({ where: { id: approvalId } });
+  }
+
   async getForWorkspace(workspaceId: string) {
     // Note: To get workspace approvals, we need to join across conversation -> run
     // Since ApprovalRequest doesn't have explicit relations, we find runs first.

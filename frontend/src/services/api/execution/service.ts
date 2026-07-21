@@ -17,11 +17,11 @@ export const executionService = {
   },
   
   get: async (id: string) => {
-    const data = await apiClient<ExecutionDto>(`/runs/${id}`);
+    const data = await apiClient<ExecutionDto>(`/executions/${id}`);
     return mapExecutionToDomain(data);
   },
   
-  cancel: async (id: string) => {
-    return apiClient<void>(`/runs/${id}/cancel`, { method: 'POST' });
+  async cancelExecution(id: string): Promise<void> {
+    return apiClient<void>(`/executions/${id}/cancel`, { method: 'POST' });
   },
 };

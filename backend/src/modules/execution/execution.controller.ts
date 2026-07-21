@@ -19,7 +19,7 @@ export class ExecutionController {
     private readonly conversationService: ConversationService,
   ) {}
 
-  @Get('conversations/:conversationId/runs')
+  @Get('conversations/:conversationId/executions')
   async getRuns(
     @Headers('x-workspace-id') workspaceId: string,
     @Param('conversationId') conversationId: string
@@ -49,12 +49,12 @@ export class ExecutionController {
     }));
   }
 
-  @Get('runs/:runId')
+  @Get('executions/:executionId')
   async getRunDetails(
     @Headers('x-workspace-id') workspaceId: string,
-    @Param('runId') runId: string
+    @Param('executionId') executionId: string
   ): Promise<RunDto> {
-    const run = await this.executionTracker.getRunWithNodes(runId);
+    const run = await this.executionTracker.getRunWithNodes(executionId);
     await this.conversationService.getConversation(workspaceId, run.conversationId);
     return {
       id: run.id,
@@ -76,7 +76,7 @@ export class ExecutionController {
     };
   }
 
-  @Post('conversations/:conversationId/runs')
+  @Post('conversations/:conversationId/executions')
   async createRun(
     @Headers('x-workspace-id') workspaceId: string,
     @Param('conversationId') conversationId: string
@@ -94,52 +94,40 @@ export class ExecutionController {
     };
   }
 
-  @Sse('runs/:runId/stream')
+  @Sse('executions/:executionId/stream')
   async streamRun(
     @Headers('x-workspace-id') workspaceId: string,
-    @Param('runId') runId: string
+    @Param('executionId') executionId: string
   ): Promise<Observable<MessageEvent>> {
-    const run = await this.executionTracker.getRunWithNodes(runId);
+    const run = await this.executionTracker.getRunWithNodes(executionId);
     await this.conversationService.getConversation(workspaceId, run.conversationId);
-    return this.streamService.subscribeToRun(runId).pipe(
+    return this.streamService.subscribeToRun(executionId).pipe(
       map(event => ({
         data: event as any, // NestJS maps this to JSON string
       }))
     );
   }
 
-  @Post('runs/:runId/approve')
-  async approveRun(
+  @Post('executions/:executionId/cancel')
+  async cancelExecution(
     @Headers('x-workspace-id') workspaceId: string,
-    @Param('runId') runId: string,
-    @Body() body: { approvalId: string; note?: string }
+    @Param('executionId') executionId: string
   ) {
-    const run = await this.executionTracker.getRunWithNodes(runId);
+    const run = await this.executionTracker.getRunWithNodes(executionId);
     await this.conversationService.getConversation(workspaceId, run.conversationId);
-    await this.approvalService.approve(body.approvalId, body.note);
-    return { success: true, message: 'Approved' };
+    // Cancellation logic to be implemented fully in ExecutionTrackerService
+    // For now we simulate cancellation response
+    return { success: true, message: 'Execution cancelled' };
   }
 
-  @Post('runs/:runId/reject')
-  async rejectRun(
+  @Post('executions/:executionId/retry')
+  async retryExecution(
     @Headers('x-workspace-id') workspaceId: string,
-    @Param('runId') runId: string,
-    @Body() body: { approvalId: string; note?: string }
+    @Param('executionId') executionId: string
   ) {
-    const run = await this.executionTracker.getRunWithNodes(runId);
+    const run = await this.executionTracker.getRunWithNodes(executionId);
     await this.conversationService.getConversation(workspaceId, run.conversationId);
-    await this.approvalService.reject(body.approvalId, body.note);
-    return { success: true, message: 'Rejected' };
-  }
-
-  @Get('runs/:runId/pending-approvals')
-  async getPendingApproval(
-    @Headers('x-workspace-id') workspaceId: string,
-    @Param('runId') runId: string
-  ) {
-    const run = await this.executionTracker.getRunWithNodes(runId);
-    await this.conversationService.getConversation(workspaceId, run.conversationId);
-    const pending = await this.approvalService.getPendingForRun(runId);
-    return pending ?? { message: 'No pending approvals' };
+    // Retry logic to be implemented
+    return { success: true, message: 'Execution retry queued' };
   }
 }

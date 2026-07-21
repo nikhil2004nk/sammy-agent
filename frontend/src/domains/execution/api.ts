@@ -111,7 +111,7 @@ export function useRuns(conversationId: string | null) {
   return useQuery<Run[]>({
     queryKey: ['runs', conversationId],
     queryFn: async () => {
-      const data: BackendRun[] = await apiClient(`/conversations/${conversationId}/runs`);
+      const data: BackendRun[] = await apiClient(`/conversations/${conversationId}/executions`);
       return data.map(adaptRun);
     },
     enabled: !!conversationId,
@@ -123,7 +123,7 @@ export function useRun(runId: string | null) {
   return useQuery<Run>({
     queryKey: ['run', runId],
     queryFn: async () => {
-      const data: BackendRun = await apiClient(`/runs/${runId}`);
+      const data: BackendRun = await apiClient(`/executions/${runId}`);
       return adaptRun(data);
     },
     enabled: !!runId,
@@ -138,7 +138,7 @@ export function useLiveRun(conversationId: string | null): Run | null {
   const { data: runs } = useQuery<Run[]>({
     queryKey: ['runs', conversationId],
     queryFn: async () => {
-      const data: BackendRun[] = await apiClient(`/conversations/${conversationId}/runs`);
+      const data: BackendRun[] = await apiClient(`/conversations/${conversationId}/executions`);
       return data.map(adaptRun);
     },
     enabled: !!conversationId,
@@ -150,7 +150,7 @@ export function useLiveRun(conversationId: string | null): Run | null {
   const { data: detailedRun } = useQuery<Run>({
     queryKey: ['run', latestRun?.id],
     queryFn: async () => {
-      const data: BackendRun = await apiClient(`/runs/${latestRun!.id}`);
+      const data: BackendRun = await apiClient(`/executions/${latestRun!.id}`);
       return adaptRun(data);
     },
     enabled: !!latestRun?.id,
@@ -168,7 +168,7 @@ export function useLiveRun(conversationId: string | null): Run | null {
     }
 
     // Connect to SSE stream
-    const eventSource = new EventSource(`http://localhost:3001/runs/${latestRun.id}/stream`); // Adjust host as needed in real env
+    const eventSource = new EventSource(`http://localhost:3001/executions/${latestRun.id}/stream`); // Adjust host as needed in real env
 
     eventSource.onopen = () => {
       // On reconnect, we fetch the run to reconcile any missed events

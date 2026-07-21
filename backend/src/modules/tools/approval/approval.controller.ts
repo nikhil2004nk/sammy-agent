@@ -23,6 +23,26 @@ export class ApprovalController {
     }));
   }
 
+  @Get('approvals/:approvalId')
+  async getApproval(
+    @Headers('x-workspace-id') workspaceId: string,
+    @Param('approvalId') approvalId: string
+  ) {
+    await this.approvalService.verifyWorkspace(workspaceId, approvalId);
+    const a = await this.approvalService.getById(approvalId);
+    if (!a) throw new Error('Approval not found');
+    return {
+      id: a.id,
+      runId: a.runId,
+      tool: a.toolName,
+      arguments: a.args,
+      status: a.status === 'PENDING' ? 'Pending' : a.status === 'APPROVED' ? 'Approved' : 'Rejected',
+      createdAt: a.createdAt.getTime(),
+      decidedAt: a.decidedAt?.getTime(),
+      deciderNote: a.deciderNote,
+    };
+  }
+
   @Post('approvals/:approvalId/approve')
   async approve(
     @Headers('x-workspace-id') workspaceId: string,

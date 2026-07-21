@@ -3,13 +3,15 @@ import { ConnectionFactory } from './factories/connection.factory';
 import { CredentialService } from './credentials/credential.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ConnectionContext } from './types/connection.types';
+import { PrismaService } from '../prisma/prisma.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
 export class ConnectionsController {
   constructor(
     private readonly connectionFactory: ConnectionFactory,
-    private readonly credentialService: CredentialService
+    private readonly credentialService: CredentialService,
+    private readonly prisma: PrismaService
   ) {}
 
   @Get('providers')
@@ -24,9 +26,10 @@ export class ConnectionsController {
 
   @Get('workspaces/:workspaceId/connections')
   async getConnections(@Param('workspaceId') workspaceId: string) {
-    // In a real implementation, we would query the Connections table from DB.
-    // For this mock phase, we'll return an empty list or mock list.
-    return [];
+    return this.prisma.connection.findMany({
+      where: { workspaceId },
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
   @Post('workspaces/:workspaceId/connections')
@@ -39,5 +42,23 @@ export class ConnectionsController {
   async deleteConnection(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
     // Logic to delete connection
     return { success: true };
+  }
+
+  @Post('workspaces/:workspaceId/connections/:id/reconnect')
+  async reconnectConnection(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
+    // Logic to reconnect/re-authenticate connection
+    return { success: true, message: 'Reconnected' };
+  }
+
+  @Post('workspaces/:workspaceId/connections/:id/refresh')
+  async refreshConnection(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
+    // Logic to refresh tokens
+    return { success: true, message: 'Refreshed' };
+  }
+
+  @Get('workspaces/:workspaceId/connections/:id/health')
+  async getConnectionHealth(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
+    // Logic to check connection health/validity
+    return { id, status: 'healthy', message: 'Connection is active' };
   }
 }

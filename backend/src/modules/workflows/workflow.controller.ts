@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, Delete } from '@nestjs/common';
 import { WorkflowService } from './workflow.service';
 import { WorkflowRunnerService } from './workflow-runner.service';
 import { WorkflowGraph } from './workflow.types';
@@ -36,19 +36,26 @@ export class WorkflowController {
     return this.workflowService.findOne(workspaceId, workflowId);
   }
 
-  @Patch(':workflowId/activate')
-  async activate(
+  @Patch(':workflowId')
+  async update(
     @Param('workspaceId') workspaceId: string,
-    @Param('workflowId') workflowId: string
+    @Param('workflowId') workflowId: string,
+    @Body() body: { status?: 'ACTIVE' | 'ARCHIVED'; name?: string }
   ) {
-    return this.workflowService.activate(workspaceId, workflowId);
+    if (body.status === 'ACTIVE') {
+      return this.workflowService.activate(workspaceId, workflowId);
+    } else if (body.status === 'ARCHIVED') {
+      return this.workflowService.archive(workspaceId, workflowId);
+    }
+    return { success: true, message: 'Workflow updated' };
   }
 
-  @Patch(':workflowId/archive')
-  async archive(
+  @Delete(':workflowId')
+  async delete(
     @Param('workspaceId') workspaceId: string,
     @Param('workflowId') workflowId: string
   ) {
+    // Implement soft delete or archive internally
     return this.workflowService.archive(workspaceId, workflowId);
   }
 

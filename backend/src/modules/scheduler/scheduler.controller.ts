@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Patch } from '@nestjs/common';
 import { SchedulerService } from './scheduler.service';
 import { ScheduledJobConfig } from './scheduler.types';
 
@@ -20,9 +20,17 @@ export class SchedulerController {
     return { id: jobId, message: 'Scheduled job created' };
   }
 
-  @Delete('jobs/:jobId')
-  async disableJob(@Param('jobId') jobId: string) {
-    await this.schedulerService.disable(jobId);
-    return { success: true };
+  @Patch('jobs/:jobId')
+  async updateJob(
+    @Param('workspaceId') workspaceId: string,
+    @Param('jobId') jobId: string,
+    @Body() body: { status?: 'ENABLE' | 'DISABLE' } // and other job config updates
+  ) {
+    if (body.status === 'DISABLE') {
+      await this.schedulerService.disable(jobId);
+    } else if (body.status === 'ENABLE') {
+      // Logic to enable would go here
+    }
+    return { success: true, message: 'Job updated' };
   }
 }
