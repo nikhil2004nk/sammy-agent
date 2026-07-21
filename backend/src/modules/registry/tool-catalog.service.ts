@@ -15,7 +15,7 @@ export class ToolCatalogService {
   @OnEvent('mcp.tool.discovered')
   handleToolDiscovered(event: ToolDiscoveredEvent) {
     const tool = event.payload.tool as ToolMetadata;
-    const namespacedName = `${tool.serverId}.${tool.name}`;
+    const namespacedName = tool.name;
 
     // We only update if it's new or has a higher priority
     const existing = this.tools.get(namespacedName);

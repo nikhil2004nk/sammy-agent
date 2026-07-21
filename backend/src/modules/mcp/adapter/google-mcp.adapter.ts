@@ -79,25 +79,25 @@ export class GoogleMcpAdapter implements IMcpAdapter {
     return [];
   }
 
-  async executeTool(toolName: string, args: Record<string, any>, resolvedConnection?: ResolvedConnection): Promise<ToolExecutionResult> {
+  async executeTool(toolMetadata: ToolMetadata, args: Record<string, any>, resolvedConnection?: ResolvedConnection): Promise<ToolExecutionResult> {
     const startTime = Date.now();
-    this.logger.log(`[GoogleAdapter] Executing tool '${toolName}'`);
+    this.logger.log(`[GoogleAdapter] Executing tool '${toolMetadata.name}'`);
 
     const accessToken = resolvedConnection?.authentication?.environment?.['GOOGLE_ACCESS_TOKEN'];
     if (!accessToken) {
-      throw new ToolExecutionException(this.serverId, toolName, new Error('Missing Google access token in resolved connection'));
+      throw new ToolExecutionException(this.serverId, toolMetadata.name, new Error('Missing Google access token in resolved connection'));
     }
 
     try {
       let resultData: any;
-      if (toolName === 'google_search') {
+      if (toolMetadata.name === 'google_search') {
         // Mock google search
         resultData = `Search results for "${args.query}" via Google API (mock)`;
-      } else if (toolName === 'gmail_send') {
+      } else if (toolMetadata.name === 'gmail_send') {
         // Mock gmail send
         resultData = `Email sent to ${args.to} with subject "${args.subject}" (mock)`;
       } else {
-        throw new Error(`Tool ${toolName} not supported by GoogleAdapter`);
+        throw new Error(`Tool ${toolMetadata.name} not supported by GoogleAdapter`);
       }
       
       const duration = Date.now() - startTime;
@@ -106,14 +106,14 @@ export class GoogleMcpAdapter implements IMcpAdapter {
         data: resultData,
         duration,
         serverId: this.serverId,
-        toolName,
+        toolName: toolMetadata.name,
         metadata: {
           provider: 'google'
         }
       };
     } catch (error) {
-      this.logger.error(`[GoogleAdapter] Tool execution failed for '${toolName}'`);
-      throw new ToolExecutionException(this.serverId, toolName, error);
+      this.logger.error(`[GoogleAdapter] Tool execution failed for '${toolMetadata.name}'`);
+      throw new ToolExecutionException(this.serverId, toolMetadata.name, error);
     }
   }
 

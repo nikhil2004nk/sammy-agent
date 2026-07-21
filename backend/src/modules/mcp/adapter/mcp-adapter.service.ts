@@ -100,29 +100,37 @@ export class McpAdapterService implements IMcpAdapter {
       return [];
     }
   }
-  async executeTool(toolName: string, args: Record<string, any>, resolvedConnection?: any): Promise<ToolExecutionResult> {
+  async executeTool(toolMetadata: ToolMetadata, args: Record<string, any>, resolvedConnection?: any): Promise<ToolExecutionResult> {
     const startTime = Date.now();
-    this.logger.log(`[Adapter] Executing tool '${toolName}' on '${this.serverId}'`);
+    this.logger.log(`[Adapter] Executing tool '${toolMetadata.name}' on '${this.serverId}'`);
     try {
+      // Use originalName if present (safest), else fallback to stripping prefix
+      let actualToolName = toolMetadata.originalName;
+      if (!actualToolName) {
+        actualToolName = toolMetadata.name.startsWith(`${this.serverId}_`) 
+          ? toolMetadata.name.substring(this.serverId.length + 1) 
+          : toolMetadata.name;
+      }
+
       const result = await this.client.callTool({
-        name: toolName,
+        name: actualToolName,
         arguments: args,
       });
       
       const duration = Date.now() - startTime;
-      this.logger.log(`[Adapter] Tool '${toolName}' executed successfully in ${duration}ms`);
+      this.logger.log(`[Adapter] Tool '${actualToolName}' executed successfully in ${duration}ms`);
 
       return {
         success: !result.isError,
         data: result.content,
         duration,
         serverId: this.serverId,
-        toolName,
+        toolName: actualToolName,
         metadata: { isError: result.isError }
       };
     } catch (error) {
-      this.logger.error(`[Adapter] Tool execution failed for '${toolName}'`);
-      throw new ToolExecutionException(this.serverId, toolName, error);
+      this.logger.error(`[Adapter] Tool execution failed for '${toolMetadata.name}'`);
+      throw new ToolExecutionException(this.serverId, toolMetadata.name, error);
     }
   }
 

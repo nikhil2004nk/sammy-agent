@@ -67,7 +67,7 @@ export class ToolExecutorService {
       const resolvedConnection = await this.connectionFactory.resolveConnection(connectionContext);
 
       // 5. Execute
-      const result = await adapter.executeTool(toolMetadata.name, args, resolvedConnection);
+      const result = await adapter.executeTool(toolMetadata, args, resolvedConnection);
 
       const duration = Date.now() - startTime;
       this.eventBus.emitToolExecutionCompleted(context.traceId, context.agentId, namespacedToolName, duration, result);

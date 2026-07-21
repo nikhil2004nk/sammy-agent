@@ -22,6 +22,7 @@ export interface ToolMetadata {
   priority?: number;
   origin?: string;
   loadedAt?: Date;
+  originalName?: string;
 }
 
 export interface ToolExecutionResult {

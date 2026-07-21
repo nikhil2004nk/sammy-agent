@@ -4,9 +4,12 @@ import * as crypto from 'crypto';
 
 export class McpMapper {
   static mapTool(serverId: string, sdkTool: Tool): ToolMetadata {
+    // OpenAI tools only allow [a-zA-Z0-9_-], so we sanitize any dots coming from the SDK tool names
+    const sanitizedToolName = sdkTool.name.replace(/\./g, '_');
+    
     return {
       id: crypto.randomUUID(),
-      name: sdkTool.name,
+      name: `${serverId}_${sanitizedToolName}`,
       description: sdkTool.description || '',
       inputSchema: sdkTool.inputSchema,
       serverId: serverId,
@@ -17,6 +20,7 @@ export class McpMapper {
       priority: 100, // Default MCP priority
       origin: `mcp://${serverId}`,
       loadedAt: new Date(),
+      originalName: sdkTool.name, // Keep the real name to pass back to the MCP server!
     };
   }
 

@@ -9,7 +9,7 @@ export interface IMcpAdapter {
   discoverTools(): Promise<ToolMetadata[]>;
   discoverResources(): Promise<McpResource[]>;
   discoverPrompts(): Promise<McpPrompt[]>;
-  executeTool(toolName: string, args: Record<string, any>, resolvedConnection?: any): Promise<ToolExecutionResult>;
+  executeTool(toolMetadata: ToolMetadata, args: Record<string, any>, resolvedConnection?: any): Promise<ToolExecutionResult>;
   getServerInfo(): ServerInfo;
   streamTool(toolName: string, args: Record<string, any>): Promise<any>;
 }
