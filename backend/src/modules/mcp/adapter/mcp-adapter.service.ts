@@ -5,8 +5,10 @@ import { ToolMetadata, ToolExecutionResult, ServerInfo, McpResource, McpPrompt, 
 import { McpMapper } from './mcp.mapper';
 import { McpConnectionException, McpDiscoveryException, ToolExecutionException } from '../exceptions/mcp.exceptions';
 
+import { IMcpAdapter } from '../interfaces/mcp-adapter.interface';
+
 @Injectable()
-export class McpAdapterService {
+export class McpAdapterService implements IMcpAdapter {
   private readonly logger = new Logger(McpAdapterService.name);
   
   private client: Client;

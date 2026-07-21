@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
+import { IMcpAdapter } from '../interfaces/mcp-adapter.interface';
+import { GoogleMcpAdapter } from '../adapter/google-mcp.adapter';
 import { McpAdapterService } from '../adapter/mcp-adapter.service';
 import { McpConfig, McpServerConfig } from '../config/mcp.config';
 import { AdapterState } from '../types/mcp.types';
@@ -9,7 +11,7 @@ import { ServerUnhealthyEvent, EventBusService } from '../../events/event-bus.se
 @Injectable()
 export class McpManagerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(McpManagerService.name);
-  private adapters: Map<string, McpAdapterService> = new Map();
+  private adapters: Map<string, IMcpAdapter> = new Map();
   private config: McpConfig;
 
   constructor(
@@ -43,7 +45,13 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
   }
 
   private async initializeServer(serverId: string, config: McpServerConfig): Promise<void> {
-    const adapter = new McpAdapterService(serverId);
+    let adapter: IMcpAdapter;
+    if (serverId === 'google') {
+      adapter = new GoogleMcpAdapter(serverId);
+    } else {
+      adapter = new McpAdapterService(serverId);
+    }
+    
     this.adapters.set(serverId, adapter);
 
     let attempts = 0;
@@ -76,11 +84,11 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
     }
   }
 
-  getAdapter(serverId: string): McpAdapterService | undefined {
+  getAdapter(serverId: string): IMcpAdapter | undefined {
     return this.adapters.get(serverId);
   }
 
-  getAllAdapters(): Map<string, McpAdapterService> {
+  getAllAdapters(): Map<string, IMcpAdapter> {
     return this.adapters;
   }
 

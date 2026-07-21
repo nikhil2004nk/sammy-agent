@@ -3,6 +3,15 @@ export interface ConnectionContext {
   serverId: string;
 }
 
+export enum ConnectionState {
+  CREATED = 'CREATED',
+  CONNECTING = 'CONNECTING',
+  CONNECTED = 'CONNECTED',
+  REFRESHING = 'REFRESHING',
+  ERROR = 'ERROR',
+  DISCONNECTED = 'DISCONNECTED'
+}
+
 export interface ConnectionCredential {
   scheme: string; // e.g., 'oauth2', 'apikey', 'jwt', 'mtls', 'basic', 'none'
   values: Record<string, string>;
@@ -26,4 +35,15 @@ export interface ResolvedConnection {
   serverId: string;
   transport: TransportConfig;
   authentication?: AuthenticationContext;
+}
+
+export interface Connection {
+  id: string;
+  workspaceId: string;
+  serverId: string;
+  state: ConnectionState;
+  createdAt: Date;
+  updatedAt: Date;
+  lastError?: string;
+  resolvedConfig?: ResolvedConnection;
 }

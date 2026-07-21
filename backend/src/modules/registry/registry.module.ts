@@ -5,8 +5,12 @@ import { ResourceRegistryService } from './resource-registry.service';
 import { PromptRegistryService } from './prompt-registry.service';
 import { PermissionsModule } from '../permissions/permissions.module';
 
+import { McpModule } from '../mcp/mcp.module';
+import { CapabilitiesController } from './capabilities.controller';
+
 @Module({
-  imports: [PermissionsModule],
+  imports: [PermissionsModule, McpModule],
+  controllers: [CapabilitiesController],
   providers: [
     ToolCatalogService,
     ToolDiscoveryService,

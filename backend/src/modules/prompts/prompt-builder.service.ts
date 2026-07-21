@@ -42,7 +42,7 @@ export class PromptBuilderService {
       ? msg.parts.map((p: any) => p.type === 'text' ? p.content : '').join('\n')
       : (msg.content || '');
 
-    switch (msg.role) {
+    switch (msg.role?.toLowerCase()) {
       case 'user':
         return { role: 'user', content: textContent };
       case 'system':
@@ -65,7 +65,7 @@ export class PromptBuilderService {
           name: msg.toolName
         };
       default:
-        throw new Error(`Unsupported message role`);
+        throw new Error(`Unsupported message role: ${msg.role}`);
     }
   }
 

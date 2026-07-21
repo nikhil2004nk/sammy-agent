@@ -63,3 +63,24 @@ export enum AdapterState {
   Reconnecting = 'Reconnecting',
   Closed = 'Closed'
 }
+
+export enum McpServerState {
+  Installed = 'Installed',
+  Running = 'Running',
+  Healthy = 'Healthy',
+  Error = 'Error',
+  Uninstalled = 'Uninstalled'
+}
+
+export interface InstalledServer {
+  id: string;
+  workspaceId: string;
+  name: string;
+  version: string;
+  state: McpServerState;
+  config: Record<string, any>;
+  lastStatusCheck?: Date;
+  lastError?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

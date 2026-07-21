@@ -6,6 +6,7 @@ import { EventBusService } from '../events/event-bus.service';
 import { ToolExecutionResult } from '../mcp/types/mcp.types';
 import { ConnectionFactory } from '../connections/factories/connection.factory';
 import { ConnectionContext } from '../connections/types/connection.types';
+import { ApprovalMiddleware, ApprovalRequiredException } from './middleware/approval.middleware';
 
 @Injectable()
 export class ToolExecutorService {
@@ -16,6 +17,7 @@ export class ToolExecutorService {
     private readonly mcpManager: McpManagerService,
     private readonly eventBus: EventBusService,
     private readonly connectionFactory: ConnectionFactory,
+    private readonly approvalMiddleware: ApprovalMiddleware,
   ) {}
 
   async executeTool(context: ExecutionContext, namespacedToolName: string, args: Record<string, any>): Promise<ToolExecutionResult> {
@@ -32,6 +34,9 @@ export class ToolExecutorService {
       }
 
       currentServerId = toolMetadata.serverId || 'system';
+
+      // 1.5 Check Approval
+      await this.approvalMiddleware.validate(context, toolMetadata, args);
 
       // 2. Get adapter via Manager
       if (!toolMetadata.serverId) {

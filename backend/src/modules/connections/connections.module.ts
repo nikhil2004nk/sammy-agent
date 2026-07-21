@@ -6,9 +6,14 @@ import { MemoryCredentialRepository } from './repositories/memory-credential.rep
 import { NoOpEncryptionService } from './services/noop-encryption.service';
 import { EncryptionService } from './interfaces/encryption-service.interface';
 import { CredentialRepository } from './interfaces/credential-repository.interface';
+import { CredentialService } from './credentials/credential.service';
+import { GoogleConnectionProvider } from './providers/google-connection.provider';
+
+import { ConnectionsController } from './connections.controller';
 
 @Module({
   imports: [ConfigModule],
+  controllers: [ConnectionsController],
   providers: [
     {
       provide: EncryptionService,
@@ -19,17 +24,21 @@ import { CredentialRepository } from './interfaces/credential-repository.interfa
       useClass: MemoryCredentialRepository
     },
     OAuthConnectionProvider,
-    ConnectionFactory
+    GoogleConnectionProvider,
+    ConnectionFactory,
+    CredentialService
   ],
-  exports: [ConnectionFactory]
+  exports: [ConnectionFactory, CredentialService, GoogleConnectionProvider]
 })
 export class ConnectionsModule implements OnModuleInit {
   constructor(
     private readonly factory: ConnectionFactory,
-    private readonly oauthProvider: OAuthConnectionProvider
+    private readonly oauthProvider: OAuthConnectionProvider,
+    private readonly googleProvider: GoogleConnectionProvider
   ) {}
 
   onModuleInit() {
     this.factory.registerProvider(this.oauthProvider);
+    this.factory.registerProvider(this.googleProvider);
   }
 }

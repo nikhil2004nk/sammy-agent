@@ -17,6 +17,10 @@ export class ConnectionFactory {
     this.logger.log(`Registered connection provider: ${provider.getProviderId()}`);
   }
 
+  getProviders(): Map<string, ConnectionProvider> {
+    return this.providers;
+  }
+
   async resolveConnection(context: ConnectionContext): Promise<ResolvedConnection> {
     const providerId = this.serverToProviderMap[context.serverId] || 'none';
     

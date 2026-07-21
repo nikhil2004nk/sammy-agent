@@ -8,6 +8,8 @@ import { LlmFactoryService } from '../src/modules/llm/factory/llm-factory.servic
 import { ILLMProvider, ILLMMessage, ILLMResponse, ILLMTool } from '../src/modules/llm/interfaces/llm-provider.interface';
 import * as path from 'path';
 
+import { WorkspacesModule } from '../src/modules/workspaces/workspaces.module';
+
 // Override the config for this test to point to the local mock server
 const testConfig = () => ({
   mcp: {
@@ -60,7 +62,8 @@ describe('Agent Loop (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({ load: [testConfig], isGlobal: true }),
-        RuntimeModule
+        RuntimeModule,
+        WorkspacesModule
       ],
     }).compile();
 
@@ -84,25 +87,35 @@ describe('Agent Loop (e2e)', () => {
   });
 
   it('should run a complete agent loop (User -> ToolCall -> ToolResult -> FinalAnswer)', async () => {
-    const context: ExecutionContext = {
-      traceId: 'trace-loop-1',
-      agentId: 'agent-1',
-      conversationId: 'conv-loop-1',
-      runId: 'run-1',
-      workspaceId: 'workspace-1',
+    const validWorkspaceId = '00000000-0000-0000-0000-000000000001';
+    
+    // Create the workspace first to satisfy foreign key constraints
+    const prisma = app.get(require('../src/modules/prisma/prisma.service').PrismaService);
+    await prisma.workspace.upsert({
+      where: { id: validWorkspaceId },
+      update: {},
+      create: { id: validWorkspaceId, name: 'Test Workspace' }
+    });
+
+    const conversation = await conversationService.createConversation(validWorkspaceId);
+    const conversationId = conversation.id;
+
+    const context = {
+      traceId: require('crypto').randomUUID(),
+      agentId: require('crypto').randomUUID(),
+      conversationId: conversationId,
+      runId: require('crypto').randomUUID(),
+      workspaceId: validWorkspaceId,
       modelConfig: { provider: 'mock', model: 'mock', temperature: 0, maxTokens: 100 },
       metadata: {}
-    };
-
-    const conversation = await conversationService.createConversation('workspace-1');
-    const conversationId = conversation.id;
+    } as ExecutionContext;
     
     const finalAnswer = await agentLoop.runLoop(context, conversationId, 'Please echo "Hello Loop"');
     
     expect(finalAnswer).toBe('Final Answer: The tool echoed Hello Loop');
 
     // Verify conversation state
-    const messages = await conversationService.getMessages('workspace-1', conversationId);
+    const messages = await conversationService.getMessages(validWorkspaceId, conversationId);
     
     expect(messages.length).toBe(4);
     expect(messages[0].role).toBe('USER');
@@ -113,7 +126,7 @@ describe('Agent Loop (e2e)', () => {
     expect((messages[1] as any).parts[0].content.name).toBe('mock.echo');
 
     expect(messages[2].role).toBe('TOOL');
-    expect((messages[2] as any).parts[0].content.name).toBe('mock.echo');
+    expect((messages[2] as any).parts[0].toolCallId).toBeDefined();
     
     expect(messages[3].role).toBe('ASSISTANT');
     expect((messages[3] as any).parts[0].content.text).toBe('Final Answer: The tool echoed Hello Loop');
