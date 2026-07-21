@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AgentAction } from './agent.types';
 import { ExecutionContext } from '../../../common/execution-context';
 import { Message } from '../../conversation/conversation.types';
@@ -16,6 +17,7 @@ export class AgentStepService {
     private readonly llmFactory: LlmFactoryService,
     private readonly discovery: ToolDiscoveryService,
     private readonly stream: ExecutionStreamService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -32,7 +34,8 @@ export class AgentStepService {
     const { messages: llmMessages, tools: llmTools } = this.promptBuilder.buildPrompt(messages, tools);
 
     // 3. Invoke LLM
-    const provider = this.llmFactory.getProvider(context.modelConfig?.provider || 'mock');
+    const defaultProvider = this.configService.get<string>('llm.provider') || 'openai';
+    const provider = this.llmFactory.getProvider(context.modelConfig?.provider || defaultProvider);
     const response = await provider.generateResponse(
       llmMessages, 
       context.modelConfig?.temperature || 0, 

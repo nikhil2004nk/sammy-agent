@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { IExecutionStore } from './execution-store.interface';
 import { Run, ExecutionNode } from '../execution.types';
 
+/**
+ * In-memory execution store for testing purposes only.
+ * DO NOT use in production.
+ */
 @Injectable()
 export class InMemoryExecutionStore implements IExecutionStore {
   private runs = new Map<string, Run>();

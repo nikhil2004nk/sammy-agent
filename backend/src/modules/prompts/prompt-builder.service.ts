@@ -39,7 +39,12 @@ export class PromptBuilderService {
 
   private mapMessage(msg: Message | any): ILLMMessage {
     const textContent = msg.parts
-      ? msg.parts.map((p: any) => p.type === 'text' ? p.content : '').join('\n')
+      ? msg.parts.map((p: any) => {
+          if (p.type === 'text' || p.type === 'TEXT') {
+            return typeof p.content === 'object' && p.content !== null ? p.content.text : p.content;
+          }
+          return '';
+        }).join('\n')
       : (msg.content || '');
 
     switch (msg.role?.toLowerCase()) {

@@ -97,7 +97,7 @@ export class ConversationController {
       role: 'assistant',
       status: 'completed',
       createdAt: Date.now(), 
-      parts: [{ type: 'text', content: response }]
+      parts: [{ type: 'text', content: { text: response } }]
     };
 
     // 5. Return new assistant message (ensure ISO string for frontend format)

@@ -1,34 +1,39 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { ILLMProvider, ILLMMessage, ILLMResponse, ILLMTool } from '../interfaces/llm-provider.interface';
 
 @Injectable()
-export class OpenAiProvider implements ILLMProvider {
+export class OpenAiProvider implements ILLMProvider, OnModuleInit {
   private readonly logger = new Logger(OpenAiProvider.name);
   private openai: OpenAI | null = null;
-  private readonly isMock: boolean;
+  private model: string = 'gpt-4o';
 
-  constructor(private configService: ConfigService) {
-    this.isMock = this.configService.get<string>('USE_MOCK_LLM') === 'true';
-    if (!this.isMock) {
-      const openRouterKey = this.configService.get<string>('OPENROUTER_API_KEY');
-      const openAiKey = this.configService.get<string>('OPENAI_API_KEY');
-      
-      if (openRouterKey) {
+  constructor(private configService: ConfigService) {}
+
+  onModuleInit() {
+    const activeProvider = this.configService.get<string>('llm.provider');
+    
+    // We handle both 'openai' and 'openrouter' via the OpenAI SDK
+    if (activeProvider === 'openai' || activeProvider === 'openrouter') {
+      const apiKey = this.configService.get<string>(`llm.${activeProvider}.apiKey`);
+      const baseUrl = this.configService.get<string>(`llm.${activeProvider}.baseUrl`);
+      this.model = this.configService.get<string>(`llm.${activeProvider}.model`) || 'gpt-4o';
+
+      if (apiKey) {
         this.openai = new OpenAI({ 
-          apiKey: openRouterKey,
-          baseURL: 'https://openrouter.ai/api/v1',
-          defaultHeaders: {
-            'HTTP-Referer': 'http://localhost:3000', // Required by OpenRouter
+          apiKey: apiKey,
+          baseURL: baseUrl,
+          defaultHeaders: activeProvider === 'openrouter' ? {
+            'HTTP-Referer': 'http://localhost:3000',
             'X-Title': 'Sammy Agent Console',
-          }
+          } : undefined
         });
-      } else if (openAiKey) {
-        this.openai = new OpenAI({ apiKey: openAiKey });
-      } else {
-        this.logger.warn('No API key set. Falling back to Mock mode.');
-        this.isMock = true;
+      }
+
+      if (!this.openai) {
+        this.logger.error(`No API key provided for ${activeProvider}.`);
+        throw new Error(`LLM Provider configuration failed: ${activeProvider} is active but missing API Key.`);
       }
     }
   }
@@ -40,17 +45,11 @@ export class OpenAiProvider implements ILLMProvider {
     tools?: ILLMTool[],
     onToken?: (token: string) => void
   ): Promise<ILLMResponse> {
-    if (this.isMock || !this.openai) {
-      this.logger.log('Generating response with OpenAI provider (Mock Mode)');
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      return {
-        content: "This is a simulated response from the Sammy Agent Platform OpenAI Provider.",
-        tokensUsed: 42
-      };
+    if (!this.openai) {
+      throw new Error('OpenAI Provider is not configured properly.');
     }
 
-    this.logger.log('Generating response with real OpenAI API');
+    this.logger.log(`Generating response with real OpenAI API (model: ${this.model})`);
     
     // Map messages to OpenAI format
     const openAiMessages = messages.map(msg => ({
@@ -61,7 +60,7 @@ export class OpenAiProvider implements ILLMProvider {
     try {
       if (onToken) {
         const stream = await this.openai.chat.completions.create({
-          model: 'gpt-4o', // or gpt-4-turbo
+          model: this.model,
           messages: openAiMessages,
           temperature,
           max_tokens: maxTokens,
@@ -83,7 +82,7 @@ export class OpenAiProvider implements ILLMProvider {
         };
       } else {
         const response = await this.openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: this.model,
           messages: openAiMessages,
           temperature,
           max_tokens: maxTokens,
