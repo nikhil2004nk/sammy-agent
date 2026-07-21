@@ -409,3 +409,114 @@ model MessagePart {
 
   @@unique([messageId, order])
 }
+
+// -------------------------------------------------------------
+// Human Approval (Phase 2)
+// -------------------------------------------------------------
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model ApprovalRequest {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId       String         @db.Uuid
+  toolName    String
+  args        Json
+  status      ApprovalStatus @default(PENDING)
+  decidedAt   DateTime?
+  deciderNote String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([runId, status])
+}
+
+// -------------------------------------------------------------
+// Episodic Memory (Phase 3)
+// -------------------------------------------------------------
+
+model EpisodicMemory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String   @db.Uuid
+  userId      String?  @db.Uuid
+  agentId     String?  @db.Uuid
+  runId       String?  @db.Uuid
+  summary     String   @db.Text
+  importance  Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, userId])
+}
+
+// -------------------------------------------------------------
+// Workflows (Phase 4)
+// -------------------------------------------------------------
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum WorkflowRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model Workflow {
+  id          String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String         @db.Uuid
+  name        String
+  description String?        @db.Text
+  graph       Json
+  status      WorkflowStatus @default(DRAFT)
+  version     Int            @default(1)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  runs WorkflowRun[]
+
+  @@index([workspaceId, status])
+}
+
+model WorkflowRun {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workflowId String            @db.Uuid
+  status     WorkflowRunStatus @default(PENDING)
+  context    Json?
+  result     Json?
+  error      String?           @db.Text
+  startedAt  DateTime          @default(now())
+  endedAt    DateTime?
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, status])
+}
+
+// -------------------------------------------------------------
+// Scheduler (Phase 6)
+// -------------------------------------------------------------
+
+model ScheduledJob {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String    @db.Uuid
+  agentId     String?   @db.Uuid
+  name        String
+  cronExpr    String
+  goal        String    @db.Text
+  enabled     Boolean   @default(true)
+  lastRunAt   DateTime?
+  nextRunAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([workspaceId, enabled])
+}

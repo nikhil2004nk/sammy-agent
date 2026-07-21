@@ -17,6 +17,8 @@ import { PromptsModule } from './modules/prompts/prompts.module';
 import { ToolsModule } from './modules/tools/tools.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { RegistryModule } from './modules/registry/registry.module';
+import { WorkflowsModule } from './modules/workflows/workflow.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { RegistryModule } from './modules/registry/registry.module';
     ConversationModule,
     RuntimeModule,
     RegistryModule,
+    WorkflowsModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

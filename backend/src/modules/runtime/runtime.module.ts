@@ -11,9 +11,19 @@ import { ActionExecutorService } from './agent-loop/action-executor.service';
 import { AgentLoopService } from './agent-loop/agent-loop.service';
 import { ExecutionModule } from '../execution/execution.module';
 import { RegistryModule } from '../registry/registry.module';
+import { MemoryModule } from '../memory/memory.module';
 
 @Module({
-  imports: [PromptsModule, LlmModule, ToolsModule, EventsModule, forwardRef(() => ConversationModule), ExecutionModule, RegistryModule],
+  imports: [
+    PromptsModule,
+    LlmModule,
+    ToolsModule,
+    EventsModule,
+    forwardRef(() => ConversationModule),
+    ExecutionModule,
+    RegistryModule,
+    MemoryModule,
+  ],
   providers: [ExecutionService, PlannerService, AgentStepService, ActionExecutorService, AgentLoopService],
   exports: [ExecutionService, AgentLoopService],
 })

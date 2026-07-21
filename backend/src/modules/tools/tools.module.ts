@@ -4,16 +4,18 @@ import { RegistryModule } from '../registry/registry.module';
 import { McpModule } from '../mcp/mcp.module';
 import { EventsModule } from '../events/events.module';
 import { ConnectionsModule } from '../connections/connections.module';
-import { ApprovalMiddleware } from './middleware/approval.middleware';
+import { ApprovalService } from './approval/approval.service';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [
     RegistryModule,
     McpModule,
     EventsModule,
-    ConnectionsModule
+    ConnectionsModule,
+    PrismaModule,
   ],
-  providers: [ToolExecutorService, ApprovalMiddleware],
-  exports: [ToolExecutorService, ApprovalMiddleware]
+  providers: [ToolExecutorService, ApprovalService],
+  exports: [ToolExecutorService, ApprovalService],
 })
 export class ToolsModule {}

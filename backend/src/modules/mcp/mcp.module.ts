@@ -6,13 +6,25 @@ import { McpManagerService } from './manager/mcp-manager.service';
 import { McpHealthMonitor } from './health/mcp-health.monitor';
 import { McpDiscoveryService } from './discovery/mcp-discovery.service';
 import { McpRegistryService } from './registry/mcp-registry.service';
+import { ProviderAdapterRegistry } from './provider-adapter.registry';
 
 @Module({
   imports: [
     ConfigModule.forFeature(mcpConfig),
     ScheduleModule.forRoot(),
   ],
-  providers: [McpManagerService, McpHealthMonitor, McpDiscoveryService, McpRegistryService],
-  exports: [McpManagerService, McpDiscoveryService, McpRegistryService],
+  providers: [
+    ProviderAdapterRegistry,
+    McpManagerService,
+    McpHealthMonitor,
+    McpDiscoveryService,
+    McpRegistryService,
+  ],
+  exports: [
+    ProviderAdapterRegistry,
+    McpManagerService,
+    McpDiscoveryService,
+    McpRegistryService,
+  ],
 })
 export class McpModule {}

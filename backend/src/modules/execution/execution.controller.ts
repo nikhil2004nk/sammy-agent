@@ -1,15 +1,17 @@
-import { Controller, Get, Post, Param, Sse, MessageEvent } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Sse, MessageEvent } from '@nestjs/common';
 import { ExecutionTrackerService } from './execution-tracker.service';
 import { ExecutionStreamService } from './execution-stream.service';
-import { RunDto, ExecutionNodeDto } from './dto/run.dto';
+import { RunDto } from './dto/run.dto';
 import * as crypto from 'crypto';
 import { Observable, map } from 'rxjs';
+import { ApprovalService } from '../tools/approval/approval.service';
 
 @Controller()
 export class ExecutionController {
   constructor(
     private readonly executionTracker: ExecutionTrackerService,
-    private readonly streamService: ExecutionStreamService
+    private readonly streamService: ExecutionStreamService,
+    private readonly approvalService: ApprovalService,
   ) {}
 
   @Get('conversations/:conversationId/runs')
@@ -70,5 +72,39 @@ export class ExecutionController {
         data: event as any, // NestJS maps this to JSON string
       }))
     );
+  }
+
+  /**
+   * Approve a pending tool execution for a run.
+   * The agent loop is polling the DB — this update will unblock it.
+   */
+  @Post('runs/:runId/approve')
+  async approveRun(
+    @Param('runId') runId: string,
+    @Body() body: { approvalId: string; note?: string }
+  ) {
+    await this.approvalService.approve(body.approvalId, body.note);
+    return { success: true, message: 'Approved' };
+  }
+
+  /**
+   * Reject a pending tool execution for a run.
+   */
+  @Post('runs/:runId/reject')
+  async rejectRun(
+    @Param('runId') runId: string,
+    @Body() body: { approvalId: string; note?: string }
+  ) {
+    await this.approvalService.reject(body.approvalId, body.note);
+    return { success: true, message: 'Rejected' };
+  }
+
+  /**
+   * Get pending approvals for a run.
+   */
+  @Get('runs/:runId/pending-approvals')
+  async getPendingApproval(@Param('runId') runId: string) {
+    const pending = await this.approvalService.getPendingForRun(runId);
+    return pending ?? { message: 'No pending approvals' };
   }
 }

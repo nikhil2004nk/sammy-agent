@@ -2,8 +2,8 @@ import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } fro
 import { ConfigService } from '@nestjs/config';
 import { OnEvent } from '@nestjs/event-emitter';
 import { IMcpAdapter } from '../interfaces/mcp-adapter.interface';
-import { GoogleMcpAdapter } from '../adapter/google-mcp.adapter';
 import { McpAdapterService } from '../adapter/mcp-adapter.service';
+import { ProviderAdapterRegistry } from '../provider-adapter.registry';
 import { McpConfig, McpServerConfig } from '../config/mcp.config';
 import { AdapterState } from '../types/mcp.types';
 import { ServerUnhealthyEvent, EventBusService } from '../../events/event-bus.service';
@@ -17,6 +17,7 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
   constructor(
     private readonly configService: ConfigService,
     private readonly eventBus: EventBusService,
+    private readonly adapterRegistry: ProviderAdapterRegistry,
   ) {}
 
   async onApplicationBootstrap() {
@@ -26,11 +27,9 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
       return;
     }
 
-    // Connect all configured servers asynchronously
     for (const [serverId, serverConfig] of Object.entries(this.config.servers)) {
       if (serverConfig.enabled) {
         this.logger.log(`Initializing MCP server: ${serverId}`);
-        // We create the adapter and connect it asynchronously (non-blocking)
         this.initializeServer(serverId, serverConfig).catch(err => {
           this.logger.error(`Background initialization failed for ${serverId}`, err);
         });
@@ -40,18 +39,16 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
 
   async onApplicationShutdown() {
     this.logger.log('Shutting down MCP Manager. Closing all connections.');
-    const disconnectPromises = Array.from(this.adapters.values()).map(adapter => adapter.disconnect());
+    const disconnectPromises = Array.from(this.adapters.values()).map(a => a.disconnect());
     await Promise.all(disconnectPromises);
   }
 
   private async initializeServer(serverId: string, config: McpServerConfig): Promise<void> {
-    let adapter: IMcpAdapter;
-    if (serverId === 'google') {
-      adapter = new GoogleMcpAdapter(serverId);
-    } else {
-      adapter = new McpAdapterService(serverId);
-    }
-    
+    // Ask the registry first — if a provider registered a factory, use it.
+    // Otherwise fall back to the generic stdio adapter.
+    const adapter: IMcpAdapter =
+      this.adapterRegistry.createAdapter(serverId) ?? new McpAdapterService(serverId);
+
     this.adapters.set(serverId, adapter);
 
     let attempts = 0;
@@ -60,17 +57,10 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
 
     while (attempts < maxAttempts) {
       try {
-        if (config.transport === 'stdio') {
-          await adapter.connect(config.command || 'node', config.args || []);
-        } else {
-          // Placeholder for HTTP/SSE which requires url
-          throw new Error(`Transport ${config.transport} not fully implemented in adapter mock`);
-        }
-        
-        // If we connect successfully, break the retry loop
-        // Ensure crypto is imported or available for traceId. We can use a generated traceId.
+        await adapter.connect(config.command || 'node', config.args || []);
         const traceId = 'sys-' + Date.now();
         this.eventBus.emitServerConnected(traceId, serverId);
+        this.logger.log(`[${serverId}] Connected using adapter: ${adapter.constructor.name}`);
         break;
       } catch (error) {
         attempts++;
@@ -79,7 +69,7 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
           this.logger.error(`Exhausted retries for ${serverId}.`);
           return;
         }
-        await new Promise(resolve => setTimeout(resolve, backoffMs * attempts)); // Exponential backoff
+        await new Promise(resolve => setTimeout(resolve, backoffMs * attempts));
       }
     }
   }
@@ -103,17 +93,15 @@ export class McpManagerService implements OnApplicationBootstrap, OnApplicationS
     const adapter = this.adapters.get(serverId);
     if (!adapter) return;
 
-    // Prevent concurrent reconnection loops
     if (adapter.getState() === AdapterState.Reconnecting || adapter.getState() === AdapterState.Connecting) {
       return;
     }
 
-    this.logger.warn(`Received Unhealthy event for ${serverId}. Initiating reconnect strategy...`);
+    this.logger.warn(`Received Unhealthy event for ${serverId}. Initiating reconnect...`);
     const config = this.config.servers[serverId];
     if (config && config.enabled) {
-      // Re-use initializeServer which has the backoff logic
       this.initializeServer(serverId, config).catch(err => {
-        this.logger.error(`Reconnection strategy failed for ${serverId}`, err);
+        this.logger.error(`Reconnection failed for ${serverId}`, err);
       });
     }
   }

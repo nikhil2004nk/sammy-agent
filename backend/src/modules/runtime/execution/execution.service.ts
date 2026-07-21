@@ -16,14 +16,13 @@ export class ExecutionService {
    * The entry point for execution. Delegates to the Agent Loop.
    */
   async executeTurn(context: ExecutionContext, userInput: string): Promise<string> {
-    this.eventBus.emitExecutionStarted(context.traceId, context.agentId, context.conversationId);
+    this.eventBus.emitExecutionStarted(context.traceId, context.agentId, context.conversationId || 'unknown');
     this.logger.log(`Starting execution turn for traceId: ${context.traceId}`);
 
     try {
-      const finalResponse = await this.agentLoop.runLoop(context, context.conversationId, userInput);
+      const finalResponse = await this.agentLoop.runLoop(context, context.conversationId || 'unknown', userInput);
       this.logger.log(`Finished execution turn for traceId: ${context.traceId}`);
-      // Assuming event bus has an appropriate method for finish, if not we skip it or use emitExecutionFinished. Let's just emit finished.
-      this.eventBus.emitExecutionFinished(context.traceId, context.agentId, context.conversationId, finalResponse);
+      this.eventBus.emitExecutionFinished(context.traceId, context.agentId, context.conversationId || 'unknown', finalResponse);
       return finalResponse;
     } catch (error) {
       this.logger.error(`Execution failed for traceId: ${context.traceId}`, error);
