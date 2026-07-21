@@ -6,6 +6,9 @@ interface FetchOptions extends RequestInit {
   requireAuth?: boolean;
 }
 
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
 export const apiClient = async (endpoint: string, options: FetchOptions = {}) => {
   const { requireAuth = true, ...customOptions } = options;
   const store = useAuthStore.getState();
@@ -33,23 +36,36 @@ export const apiClient = async (endpoint: string, options: FetchOptions = {}) =>
 
     // Handle token refresh automatically
     if (response.status === 401 && requireAuth) {
-      // Try to refresh
-      const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include' // Send the HttpOnly cookie
-      });
+      if (!isRefreshing) {
+        isRefreshing = true;
+        refreshPromise = fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        })
+          .then(async (res) => {
+            if (res.ok) {
+              const data = await res.json();
+              return data.accessToken;
+            }
+            return null;
+          })
+          .catch(() => null)
+          .finally(() => {
+            isRefreshing = false;
+          });
+      }
 
-      if (refreshResponse.ok) {
-        const { accessToken } = await refreshResponse.json();
-        
+      const newAccessToken = await refreshPromise;
+
+      if (newAccessToken) {
         // Update store with new token
         if (store.user) {
-          useAuthStore.getState().setAuth(store.user, accessToken);
+          useAuthStore.getState().setAuth(store.user, newAccessToken);
         }
         
         // Retry original request with new token
-        headers.set('Authorization', `Bearer ${accessToken}`);
+        headers.set('Authorization', `Bearer ${newAccessToken}`);
         response = await fetch(`${API_BASE_URL}${endpoint}`, { ...config, headers });
       } else {
         // Refresh failed, logout

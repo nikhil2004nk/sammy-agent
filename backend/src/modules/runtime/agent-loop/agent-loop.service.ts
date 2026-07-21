@@ -34,7 +34,7 @@ export class AgentLoopService {
         createdAt: Date.now(),
         parts: [{ type: 'text', content: userInput }]
       } as any;
-      await this.conversationService.appendMessage(conversationId, userMessage);
+      await this.conversationService.appendMessage(context.workspaceId, conversationId, userMessage);
 
       let stepCount = 0;
       const maxReasoningSteps = 10;
@@ -44,7 +44,7 @@ export class AgentLoopService {
         stepCount++;
         this.logger.debug(`[Run ${run.id}] Step ${stepCount}`);
 
-        const messages = await this.conversationService.getMessages(conversationId);
+        const messages = await this.conversationService.getMessages(context.workspaceId, conversationId);
         
         // 3. Evaluate state and get next action
         const reasoningNode = await this.executionTracker.createNode(
@@ -73,7 +73,7 @@ export class AgentLoopService {
             status: 'completed',
             parts: [{ type: 'text', content: action.content }]
           } as any;
-          await this.conversationService.appendMessage(conversationId, assistantMsg);
+          await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
           await this.executionTracker.updateRunStatus(run.id, 'completed', 'Completed');
           return action.content;
         }
@@ -95,14 +95,14 @@ export class AgentLoopService {
             content: '',
             toolCalls: action.toolCalls
           };
-          await this.conversationService.appendMessage(conversationId, assistantMsg);
+          await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
 
           // Execute actions and get ToolMessages
           const toolMessages = await this.actionExecutor.executeAction(context, action);
 
           // Append results back to conversation
           for (const msg of toolMessages) {
-            await this.conversationService.appendMessage(conversationId, msg);
+            await this.conversationService.appendMessage(context.workspaceId, conversationId, msg);
           }
 
           // Continue loop so LLM can observe tool results

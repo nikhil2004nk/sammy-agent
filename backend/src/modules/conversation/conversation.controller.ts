@@ -1,9 +1,12 @@
-import { Controller, Get, Post, Patch, Param, Body, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Delete, UseGuards, Headers } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ExecutionService } from '../runtime/execution/execution.service';
 import { ExecutionContext } from '../../common/execution-context';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { WorkspaceGuard } from '../workspaces/guards/workspace.guard';
 import * as crypto from 'crypto';
 
+@UseGuards(JwtAuthGuard, WorkspaceGuard)
 @Controller('conversations')
 export class ConversationController {
   constructor(
@@ -12,8 +15,8 @@ export class ConversationController {
   ) {}
 
   @Get()
-  async getAllConversations() {
-    const convs = await this.conversationService.getAllConversations();
+  async getAllConversations(@Headers('x-workspace-id') workspaceId: string) {
+    const convs = await this.conversationService.getAllConversations(workspaceId);
     return convs.map(c => ({
       ...c,
       createdAt: new Date(c.createdAt).toISOString(),
@@ -22,8 +25,8 @@ export class ConversationController {
   }
 
   @Post()
-  async createConversation(@Body() body: any) {
-    const conv = await this.conversationService.createConversation(body);
+  async createConversation(@Headers('x-workspace-id') workspaceId: string, @Body() body: any) {
+    const conv = await this.conversationService.createConversation(workspaceId, body);
     return {
       ...conv,
       createdAt: new Date(conv.createdAt).toISOString(),
@@ -32,8 +35,8 @@ export class ConversationController {
   }
 
   @Get(':id')
-  async getConversation(@Param('id') id: string) {
-    const conv = await this.conversationService.getConversation(id);
+  async getConversation(@Headers('x-workspace-id') workspaceId: string, @Param('id') id: string) {
+    const conv = await this.conversationService.getConversation(workspaceId, id);
     return {
       ...conv,
       createdAt: new Date(conv.createdAt).toISOString(),
@@ -42,8 +45,8 @@ export class ConversationController {
   }
 
   @Patch(':id')
-  async updateConversation(@Param('id') id: string, @Body() body: { title?: string }) {
-    const conv = await this.conversationService.updateConversation(id, body);
+  async updateConversation(@Headers('x-workspace-id') workspaceId: string, @Param('id') id: string, @Body() body: { title?: string }) {
+    const conv = await this.conversationService.updateConversation(workspaceId, id, body);
     return {
       ...conv,
       createdAt: new Date(conv.createdAt).toISOString(),
@@ -52,24 +55,24 @@ export class ConversationController {
   }
 
   @Delete(':id')
-  async deleteConversation(@Param('id') id: string) {
-    await this.conversationService.deleteConversation(id);
+  async deleteConversation(@Headers('x-workspace-id') workspaceId: string, @Param('id') id: string) {
+    await this.conversationService.deleteConversation(workspaceId, id);
     return { success: true };
   }
 
   @Get(':id/messages')
-  async getMessages(@Param('id') id: string) {
-    return await this.conversationService.getMessages(id);
+  async getMessages(@Headers('x-workspace-id') workspaceId: string, @Param('id') id: string) {
+    return await this.conversationService.getMessages(workspaceId, id);
   }
 
   @Post(':id/messages')
-  async sendMessage(@Param('id') id: string, @Body() body: { content: string }) {
+  async sendMessage(@Headers('x-workspace-id') workspaceId: string, @Param('id') id: string, @Body() body: { content: string }) {
     // 1. Create Context
     const context: ExecutionContext = {
       traceId: crypto.randomUUID(),
       conversationId: id,
       runId: crypto.randomUUID(),
-      workspaceId: 'test-workspace-id',
+      workspaceId,
       agentId: crypto.randomUUID(),
       modelConfig: {
         provider: 'openai',

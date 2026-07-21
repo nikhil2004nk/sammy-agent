@@ -1,43 +1,18 @@
-import { env } from '@/config/env';
+import { apiClient as authApiClient } from '../../lib/api-client';
 
 /**
- * A native fetch wrapper for API calls.
+ * A native fetch wrapper for API calls that integrates with auth and workspace context,
+ * and throws errors for React Query compatibility.
  */
 export async function apiClient<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${env.NEXT_PUBLIC_API_URL}${endpoint}`;
+  const result = await authApiClient(endpoint, options);
   
-  const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  // Add auth token if needed, e.g., from localStorage or a session provider
-  // const token = localStorage.getItem('token');
-  // if (token) {
-  //   defaultHeaders['Authorization'] = `Bearer ${token}`;
-  // }
-
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
-  };
-
-  const response = await fetch(url, config);
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`API Error ${response.status}: ${errorBody}`);
+  if (result.error) {
+    throw new Error(result.error.message || `API Error for ${endpoint}`);
   }
-
-  // Handle 204 No Content
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return response.json() as Promise<T>;
+  
+  return result.data as T;
 }

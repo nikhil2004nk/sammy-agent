@@ -7,35 +7,43 @@ import * as crypto from 'crypto';
 export class ConversationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createConversation(body?: { title?: string; metadata?: Record<string, any> }): Promise<Conversation> {
+  async createConversation(workspaceId: string, body?: { title?: string; metadata?: Record<string, any> }): Promise<Conversation> {
     const id = crypto.randomUUID();
     const conv = await this.prisma.conversation.create({
       data: {
         id,
         title: body?.title || 'New Conversation',
-        workspaceId: 'test-workspace-id',
+        workspaceId,
         metadata: body?.metadata || {},
       }
     });
     return this.mapConversation(conv);
   }
 
-  async getAllConversations(): Promise<Conversation[]> {
-    const convs = await this.prisma.conversation.findMany({ orderBy: { updatedAt: 'desc' } });
+  async getAllConversations(workspaceId: string): Promise<Conversation[]> {
+    const convs = await this.prisma.conversation.findMany({ 
+      where: { workspaceId },
+      orderBy: { updatedAt: 'desc' } 
+    });
     return convs.map(this.mapConversation);
   }
 
-  async getConversation(id: string): Promise<Conversation> {
+  async getConversation(workspaceId: string, id: string): Promise<Conversation> {
     let conv = await this.prisma.conversation.findUnique({ where: { id } });
+    if (conv && conv.workspaceId !== workspaceId) {
+      throw new NotFoundException('Conversation not found in your workspace');
+    }
     if (!conv) {
       conv = await this.prisma.conversation.create({
-        data: { id, title: 'Recovered Conversation', workspaceId: 'test-workspace-id' }
+        data: { id, title: 'Recovered Conversation', workspaceId }
       });
     }
     return this.mapConversation(conv);
   }
 
-  async updateConversation(id: string, updates: { title?: string }): Promise<Conversation> {
+  async updateConversation(workspaceId: string, id: string, updates: { title?: string }): Promise<Conversation> {
+    // ensure it belongs to workspace
+    await this.getConversation(workspaceId, id);
     const conv = await this.prisma.conversation.update({
       where: { id },
       data: { title: updates.title, version: { increment: 1 } },
@@ -43,11 +51,8 @@ export class ConversationService {
     return this.mapConversation(conv);
   }
 
-  async getMessages(conversationId: string): Promise<Message[]> {
-    const conv = await this.prisma.conversation.findUnique({ where: { id: conversationId } });
-    if (!conv) {
-      await this.prisma.conversation.create({ data: { id: conversationId, title: 'Recovered Conversation', workspaceId: 'test-workspace-id' } });
-    }
+  async getMessages(workspaceId: string, conversationId: string): Promise<Message[]> {
+    await this.getConversation(workspaceId, conversationId); // ensures workspace isolation
     const msgs = await this.prisma.message.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
@@ -55,11 +60,8 @@ export class ConversationService {
     return msgs.map(this.mapMessage);
   }
 
-  async appendMessage(conversationId: string, message: Message): Promise<Message> {
-    const conv = await this.prisma.conversation.findUnique({ where: { id: conversationId } });
-    if (!conv) {
-      await this.prisma.conversation.create({ data: { id: conversationId, title: 'Recovered Conversation', workspaceId: 'test-workspace-id' } });
-    }
+  async appendMessage(workspaceId: string, conversationId: string, message: Message): Promise<Message> {
+    await this.getConversation(workspaceId, conversationId); // ensures workspace isolation
     
     const msgId = message.id || crypto.randomUUID();
     const msg = await this.prisma.message.create({
@@ -84,11 +86,13 @@ export class ConversationService {
     return this.mapMessage(msg);
   }
 
-  async clearMessages(conversationId: string): Promise<void> {
+  async clearMessages(workspaceId: string, conversationId: string): Promise<void> {
+    await this.getConversation(workspaceId, conversationId);
     await this.prisma.message.deleteMany({ where: { conversationId } });
   }
 
-  async deleteConversation(id: string): Promise<void> {
+  async deleteConversation(workspaceId: string, id: string): Promise<void> {
+    await this.getConversation(workspaceId, id); // ensure ownership
     await this.prisma.conversation.delete({ where: { id } }).catch(() => {});
   }
 
