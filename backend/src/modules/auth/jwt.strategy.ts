@@ -29,7 +29,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    console.log('[JwtStrategy] Validating payload:', payload);
+    // console.log('[JwtStrategy] Validating payload:', payload);
+    // this logger was too noisy on every request
     if (!payload || !payload.sub) {
       console.error('[JwtStrategy] Invalid payload structure');
       return null;

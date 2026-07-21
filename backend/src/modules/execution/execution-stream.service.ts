@@ -27,7 +27,9 @@ export class ExecutionStreamService {
       payload,
     };
     
-    this.logger.debug(`[Stream] Emitting ${type} for run ${runId}`);
+    if (type !== 'message.delta') {
+      this.logger.debug(`[Stream] Emitting ${type} for run ${runId}`);
+    }
     this.eventSubject.next(event);
   }
 

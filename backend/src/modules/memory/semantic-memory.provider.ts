@@ -16,13 +16,11 @@ export class SemanticMemoryProvider implements IMemoryProvider {
   private readonly logger = new Logger(SemanticMemoryProvider.name);
 
   async recall(query: MemoryQuery): Promise<MemoryEntry[]> {
-    this.logger.debug(`[SemanticMemory] Recall called — not yet implemented. Returning empty.`);
     // TODO: Implement vector similarity search (pgvector, Pinecone, etc.)
     return [];
   }
 
   async remember(entry: Omit<MemoryEntry, 'id' | 'createdAt'>): Promise<MemoryEntry> {
-    this.logger.debug(`[SemanticMemory] Remember called — not yet implemented. Skipping.`);
     // TODO: Embed and store in vector DB
     return {
       ...entry,

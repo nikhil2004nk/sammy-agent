@@ -44,7 +44,24 @@ export class MemoryService {
       sections.push(`## Relevant Knowledge (Semantic Memory)\n${lines}`);
     }
 
-    if (sections.length === 0) return '';
+    if (sections.length === 0) {
+      this.logger.log(`
+[Memory Result]
+Episodic    ${episodicEntries.length}
+Semantic    ${semanticEntries.length}
+Working     0
+Total       ${episodicEntries.length + semanticEntries.length}
+      `);
+      return '';
+    }
+
+    this.logger.log(`
+[Memory Result]
+Episodic    ${episodicEntries.length}
+Semantic    ${semanticEntries.length}
+Working     0
+Total       ${episodicEntries.length + semanticEntries.length}
+    `);
 
     return `\n\n---\n${sections.join('\n\n')}\n---\n`;
   }

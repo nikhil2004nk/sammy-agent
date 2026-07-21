@@ -36,7 +36,13 @@ export class ActionExecutorService {
 
     // Execute tools sequentially for now (could be parallelized)
     for (const toolCall of action.toolCalls) {
-      this.logger.debug(`Executing tool call: ${toolCall.name}`);
+      this.logger.log(`
+[Tool Execution: ${toolCall.name}]
+Permission     Granted (Auto)
+Status         Executing...
+Args           ${JSON.stringify(toolCall.arguments).substring(0, 100)}
+      `);
+      const startTime = Date.now();
       
       const node = await this.executionTracker.createNode(
         context.runId, 
@@ -50,6 +56,14 @@ export class ActionExecutorService {
       const toolResult = await this.toolExecutor.executeTool(context, toolCall.name, toolCall.arguments);
       
       const contentText = toolResult.success && toolResult.data ? toolResult.data.map((d: any) => d.text).join('\n') : (toolResult.error || 'Unknown error');
+      
+      const duration = Date.now() - startTime;
+      this.logger.log(`
+[Tool Result: ${toolCall.name}]
+Status         ${toolResult.success ? 'Success' : 'Failed'}
+Duration       ${duration} ms
+Result         ${contentText.replace(/\n/g, ' ').substring(0, 150)}...
+      `);
 
       const message: Message = {
         id: crypto.randomUUID(),

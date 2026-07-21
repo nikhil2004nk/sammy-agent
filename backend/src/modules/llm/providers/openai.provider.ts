@@ -58,6 +58,9 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
     })) as OpenAI.Chat.ChatCompletionMessageParam[];
 
     try {
+      const startTime = Date.now();
+      const startDate = new Date();
+
       if (onToken) {
         const stream = await this.openai.chat.completions.create({
           model: this.model,
@@ -65,20 +68,52 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
           temperature,
           max_tokens: maxTokens,
           stream: true,
+          stream_options: { include_usage: true },
         });
 
         let fullContent = '';
+        let finishReason = '';
+        let usage = { prompt_tokens: 0, completion_tokens: 0 };
+
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta?.content || '';
           if (delta) {
             fullContent += delta;
             onToken(delta);
           }
+          if (chunk.choices[0]?.finish_reason) {
+            finishReason = chunk.choices[0].finish_reason;
+          }
+          if ((chunk as any).usage) {
+            usage = (chunk as any).usage;
+          }
         }
         
+        const endTime = Date.now();
+        const endDate = new Date();
+        
+        this.logger.log(`
+[LLM]
+Provider       OpenAI
+Model          ${this.model}
+Started        ${startDate.toISOString()}
+Completed      ${endDate.toISOString()}
+Latency        ${endTime - startTime} ms
+Input Tokens   ${usage.prompt_tokens}
+Output Tokens  ${usage.completion_tokens}
+Finish Reason  ${finishReason || 'unknown'}
+        `);
+
         return {
           content: fullContent,
-          tokensUsed: 0, // Streaming doesn't always return usage easily
+          tokensUsed: usage.prompt_tokens + usage.completion_tokens,
+          usage: {
+            prompt: usage.prompt_tokens,
+            completion: usage.completion_tokens,
+            finishReason: finishReason || 'unknown',
+            model: this.model,
+            provider: 'OpenAI'
+          }
         };
       } else {
         const response = await this.openai.chat.completions.create({
@@ -88,9 +123,31 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
           max_tokens: maxTokens,
         });
 
+        const endTime = Date.now();
+        const endDate = new Date();
+        
+        this.logger.log(`
+[LLM]
+Provider       OpenAI
+Model          ${this.model}
+Started        ${startDate.toISOString()}
+Completed      ${endDate.toISOString()}
+Latency        ${endTime - startTime} ms
+Input Tokens   ${response.usage?.prompt_tokens || 0}
+Output Tokens  ${response.usage?.completion_tokens || 0}
+Finish Reason  ${response.choices[0]?.finish_reason || 'unknown'}
+        `);
+
         return {
           content: response.choices[0].message.content || '',
           tokensUsed: response.usage?.total_tokens || 0,
+          usage: {
+            prompt: response.usage?.prompt_tokens || 0,
+            completion: response.usage?.completion_tokens || 0,
+            finishReason: response.choices[0]?.finish_reason || 'unknown',
+            model: this.model,
+            provider: 'OpenAI'
+          }
         };
       }
     } catch (error: any) {

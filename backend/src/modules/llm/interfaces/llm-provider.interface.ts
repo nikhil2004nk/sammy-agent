@@ -14,7 +14,14 @@ export interface ILLMMessage {
 
 export interface ILLMResponse {
   content?: string;
-  tokensUsed?: number;
+  tokensUsed?: number; // Total for backwards compatibility
+  usage?: {
+    prompt: number;
+    completion: number;
+    finishReason: string;
+    model: string;
+    provider: string;
+  };
   toolCalls?: { id: string; name: string; arguments: Record<string, any> }[];
 }
 

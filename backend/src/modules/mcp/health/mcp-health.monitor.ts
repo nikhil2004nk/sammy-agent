@@ -14,6 +14,8 @@ export class McpHealthMonitor {
     private readonly eventBus: EventBusService,
   ) {}
 
+  private healthyServers = new Set<string>();
+
   // Run every 10 seconds. In production, this would be tied to the healthInterval config per server.
   @Cron(CronExpression.EVERY_10_SECONDS)
   async checkHealth() {
@@ -24,13 +26,17 @@ export class McpHealthMonitor {
       const traceId = crypto.randomUUID();
 
       if (state === AdapterState.Failed || state === AdapterState.Closed) {
-        this.logger.warn(`Health Check: Server '${serverId}' is Unhealthy (State: ${state})`);
-        this.eventBus.emitServerUnhealthy(traceId, serverId, `State is ${state}`);
+        if (this.healthyServers.has(serverId) || this.healthyServers.size === 0) {
+          this.logger.warn(`Health Check: Server '${serverId}' is Unhealthy (State: ${state})`);
+          this.healthyServers.delete(serverId);
+          this.eventBus.emitServerUnhealthy(traceId, serverId, `State is ${state}`);
+        }
       } else if (state === AdapterState.Connected || state === AdapterState.Ready) {
-        // Optionally, actively ping the server here via adapter.getServerInfo() or a custom ping tool
-        // For now, we trust the adapter state.
-        this.logger.debug(`Health Check: Server '${serverId}' is Healthy`);
-        this.eventBus.emitServerHealthy(traceId, serverId);
+        if (!this.healthyServers.has(serverId)) {
+          this.logger.debug(`Health Check: Server '${serverId}' is Healthy`);
+          this.healthyServers.add(serverId);
+          this.eventBus.emitServerHealthy(traceId, serverId);
+        }
       }
     }
   }

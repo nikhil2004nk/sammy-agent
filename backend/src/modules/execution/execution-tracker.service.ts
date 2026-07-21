@@ -101,6 +101,16 @@ export class ExecutionTrackerService {
     };
     await this.store.createNode(node);
 
+    // Logging Node Creation
+    const logger = new (require('@nestjs/common').Logger)('ExecutionTrackerService');
+    logger.log(`
+[Node Lifecycle]
+Type       ${type}
+Status     Started
+ID         ${node.id}
+Title      ${title}
+    `);
+
     // Update aggregate metrics on Run
     const run = await this.store.getRun(runId);
     if (run) {
@@ -141,6 +151,16 @@ export class ExecutionTrackerService {
 
     const node = await this.store.getNode(nodeId);
     if (node) {
+      if (status === ExecutionNodeStatus.COMPLETED || status === ExecutionNodeStatus.FAILED || status === ExecutionNodeStatus.CANCELLED) {
+        const logger = new (require('@nestjs/common').Logger)('ExecutionTrackerService');
+        logger.log(`
+[Node Lifecycle]
+Type       ${node.type}
+Status     ${status}
+ID         ${node.id}
+Duration   ${updates.duration} ms
+        `);
+      }
       this.stream.publish(node.runId, 'node.updated', {
         id: node.id,
         status: node.status,

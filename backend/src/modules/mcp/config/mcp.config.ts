@@ -24,7 +24,7 @@ export interface McpConfig {
 export default registerAs('mcp', (): McpConfig => ({
   servers: {
     gmail: {
-      enabled: true,
+      enabled: false,
       transport: 'stdio',
       startup: 'async',
       command: 'node',
