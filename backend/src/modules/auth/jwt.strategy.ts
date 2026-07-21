@@ -10,8 +10,19 @@ export const jwtConstants = {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
+    const extractFromCookie = (req: any) => {
+      let token = null;
+      if (req && req.cookies) {
+        token = req.cookies['access_token'];
+      }
+      return token;
+    };
+
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        extractFromCookie,
+        ExtractJwt.fromAuthHeaderAsBearerToken() // Keep as fallback
+      ]),
       ignoreExpiration: false,
       secretOrKey: jwtConstants.secret,
     });

@@ -28,18 +28,16 @@ export default function RegisterPage() {
       return;
     }
 
-    if (data?.accessToken) {
+    if (data?.success) {
       // Force session refresh by calling /auth/me
       const { data: user, error: meError } = await apiClient('/auth/me', {
-        headers: { Authorization: `Bearer ${data.accessToken}` },
-        requireAuth: false
+        requireAuth: true
       });
 
       if (user) {
-        useAuthStore.getState().setAuth(user, data.accessToken);
+        useAuthStore.getState().setAuth(user);
         const { data: workspaces } = await apiClient('/workspaces', {
-          headers: { Authorization: `Bearer ${data.accessToken}` },
-          requireAuth: false
+          requireAuth: true
         });
         if (workspaces) {
           useAuthStore.getState().setWorkspaces(workspaces);

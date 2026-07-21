@@ -17,9 +17,7 @@ export const apiClient = async (endpoint: string, options: FetchOptions = {}) =>
   headers.set('Content-Type', 'application/json');
 
   if (requireAuth) {
-    if (store.accessToken) {
-      headers.set('Authorization', `Bearer ${store.accessToken}`);
-    }
+    // Cookies for access_token and refresh_token are sent automatically via credentials: 'include'
     if (store.activeWorkspaceId) {
       headers.set('x-workspace-id', store.activeWorkspaceId);
     }
@@ -28,7 +26,7 @@ export const apiClient = async (endpoint: string, options: FetchOptions = {}) =>
   const config: RequestInit = {
     ...customOptions,
     headers,
-    credentials: 'include', // Important for sending/receiving the refresh_token cookie
+    credentials: 'include', // Important for sending/receiving the cookies
   };
 
   try {
@@ -45,8 +43,7 @@ export const apiClient = async (endpoint: string, options: FetchOptions = {}) =>
         })
           .then(async (res) => {
             if (res.ok) {
-              const data = await res.json();
-              return data.accessToken;
+              return "success";
             }
             return null;
           })
@@ -56,17 +53,11 @@ export const apiClient = async (endpoint: string, options: FetchOptions = {}) =>
           });
       }
 
-      const newAccessToken = await refreshPromise;
+      const success = await refreshPromise;
 
-      if (newAccessToken) {
-        // Update store with new token
-        if (store.user) {
-          useAuthStore.getState().setAuth(store.user, newAccessToken);
-        }
-        
-        // Retry original request with new token
-        headers.set('Authorization', `Bearer ${newAccessToken}`);
-        response = await fetch(`${API_BASE_URL}${endpoint}`, { ...config, headers });
+      if (success) {
+        // Retry original request. Cookies will be attached automatically.
+        response = await fetch(`${API_BASE_URL}${endpoint}`, config);
       } else {
         // Refresh failed, logout
         useAuthStore.getState().logout();

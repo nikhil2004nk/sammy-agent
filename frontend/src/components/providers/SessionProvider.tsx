@@ -22,17 +22,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const { data: user, error } = await apiClient('/auth/me', { requireAuth: true });
       
       if (user && !error) {
-        // The interceptor inside apiClient would have updated the store with a new accessToken if it refreshed.
-        // But we need to make sure user data is set. We can get the accessToken from the store.
-        const currentToken = useAuthStore.getState().accessToken;
-        if (currentToken) {
-           setAuth(user, currentToken);
-           
-           // Fetch workspaces
-           const { data: workspaces } = await apiClient('/workspaces');
-           if (workspaces) {
-             setWorkspaces(workspaces);
-           }
+        // With cookies, if we get the user back, we are authenticated!
+        setAuth(user);
+        
+        // Fetch workspaces
+        const { data: workspaces } = await apiClient('/workspaces');
+        if (workspaces) {
+          setWorkspaces(workspaces);
         }
       }
       setLoading(false);

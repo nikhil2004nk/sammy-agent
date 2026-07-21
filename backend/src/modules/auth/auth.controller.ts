@@ -17,14 +17,16 @@ export class AuthController {
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshToken } = await this.authService.register(dto);
     this.setRefreshTokenCookie(res, refreshToken);
-    return { accessToken };
+    this.setAccessTokenCookie(res, accessToken);
+    return { success: true };
   }
 
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshToken } = await this.authService.login(dto);
     this.setRefreshTokenCookie(res, refreshToken);
-    return { accessToken };
+    this.setAccessTokenCookie(res, accessToken);
+    return { success: true };
   }
 
   @Post('refresh')
@@ -36,7 +38,8 @@ export class AuthController {
 
     const { accessToken, refreshToken: newRefreshToken } = await this.authService.refresh(refreshToken);
     this.setRefreshTokenCookie(res, newRefreshToken);
-    return { accessToken };
+    this.setAccessTokenCookie(res, accessToken);
+    return { success: true };
   }
 
   @Post('logout')
@@ -50,6 +53,12 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/auth'
+    });
+    res.clearCookie('access_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/'
     });
     return { success: true };
   }
@@ -71,6 +80,16 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/auth' // Restrict to auth routes
+    });
+  }
+
+  private setAccessTokenCookie(res: Response, token: string) {
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/' // Available for all API routes
     });
   }
 }

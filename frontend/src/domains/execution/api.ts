@@ -141,6 +141,15 @@ export function useLiveRun(conversationId: string | null): Run | null {
       return data.map(adaptRun);
     },
     enabled: !!conversationId,
+    refetchInterval: (query) => {
+      const latest = query.state.data?.[0];
+      // If we don't have a run, or the latest run is finished/failed, poll every 2s
+      // to detect when a new run starts. Once a run is active, SSE takes over.
+      if (!latest || latest.status === 'Completed' || latest.status === 'Failed' || latest.status === 'Cancelled') {
+        return 2000;
+      }
+      return false;
+    }
   });
 
   const latestRun = runs?.[0] ?? null;
