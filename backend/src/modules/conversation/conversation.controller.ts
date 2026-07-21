@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Param, Body, Delete, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Delete, UseGuards, Headers, Req } from '@nestjs/common';
 import { ConversationService } from './conversation.service';
 import { ExecutionService } from '../runtime/execution/execution.service';
 import { ExecutionContext } from '../../common/execution-context';
@@ -66,7 +66,12 @@ export class ConversationController {
   }
 
   @Post(':id/messages')
-  async sendMessage(@Headers('x-workspace-id') workspaceId: string, @Param('id') id: string, @Body() body: { content: string }) {
+  async sendMessage(
+    @Req() req: any,
+    @Headers('x-workspace-id') workspaceId: string, 
+    @Param('id') id: string, 
+    @Body() body: { content: string }
+  ) {
     // 1. Create Context
     const context: ExecutionContext = {
       traceId: crypto.randomUUID(),
@@ -74,6 +79,7 @@ export class ConversationController {
       runId: crypto.randomUUID(),
       workspaceId,
       agentId: crypto.randomUUID(),
+      userId: req.user?.userId,
       modelConfig: {
         provider: 'openai',
         model: 'openai/gpt-4o', // OpenRouter compatible model string

@@ -1,14 +1,15 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, UseGuards, Headers } from '@nestjs/common';
 import { ApprovalService } from './approval.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { WorkspaceGuard } from '../../workspaces/guards/workspace.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, WorkspaceGuard)
 @Controller()
 export class ApprovalController {
   constructor(private readonly approvalService: ApprovalService) {}
 
   @Get('workspaces/:workspaceId/approvals')
-  async getWorkspaceApprovals(@Param('workspaceId') workspaceId: string) {
+  async getWorkspaceApprovals(@Headers('x-workspace-id') workspaceId: string) {
     const approvals = await this.approvalService.getForWorkspace(workspaceId);
     return approvals.map(a => ({
       id: a.id,
@@ -23,13 +24,23 @@ export class ApprovalController {
   }
 
   @Post('approvals/:approvalId/approve')
-  async approve(@Param('approvalId') approvalId: string, @Body() body: { reason?: string }) {
+  async approve(
+    @Headers('x-workspace-id') workspaceId: string,
+    @Param('approvalId') approvalId: string, 
+    @Body() body: { reason?: string }
+  ) {
+    await this.approvalService.verifyWorkspace(workspaceId, approvalId);
     await this.approvalService.approve(approvalId, body.reason);
     return { success: true };
   }
 
   @Post('approvals/:approvalId/reject')
-  async reject(@Param('approvalId') approvalId: string, @Body() body: { reason?: string }) {
+  async reject(
+    @Headers('x-workspace-id') workspaceId: string,
+    @Param('approvalId') approvalId: string, 
+    @Body() body: { reason?: string }
+  ) {
+    await this.approvalService.verifyWorkspace(workspaceId, approvalId);
     await this.approvalService.reject(approvalId, body.reason);
     return { success: true };
   }

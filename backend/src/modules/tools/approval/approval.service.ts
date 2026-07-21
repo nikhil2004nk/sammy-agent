@@ -68,6 +68,18 @@ export class ApprovalService {
     });
   }
 
+  async verifyWorkspace(workspaceId: string, approvalId: string): Promise<void> {
+    const approval = await this.prisma.approvalRequest.findUnique({ where: { id: approvalId } });
+    if (!approval) throw new Error(`Approval request [${approvalId}] not found`);
+    const run = await this.prisma.run.findUnique({ 
+      where: { id: approval.runId },
+      include: { conversation: true }
+    });
+    if (!run || run.conversation.workspaceId !== workspaceId) {
+      throw new Error(`Approval request [${approvalId}] not found in your workspace`);
+    }
+  }
+
   async getForWorkspace(workspaceId: string) {
     // Note: To get workspace approvals, we need to join across conversation -> run
     // Since ApprovalRequest doesn't have explicit relations, we find runs first.
