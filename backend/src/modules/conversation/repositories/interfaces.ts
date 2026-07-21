@@ -5,7 +5,7 @@ export interface IConversationRepository {
   /**
    * Starts a new conversation.
    */
-  startConversation(tenantId: string | undefined, userId: string, metadata?: Record<string, any>): Promise<Conversation>;
+  startConversation(workspaceId: string, metadata?: Record<string, any>): Promise<Conversation>;
 
   /**
    * Retrieves a conversation by its ID.

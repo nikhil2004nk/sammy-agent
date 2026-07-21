@@ -1,6 +1,5 @@
 export interface ConnectionContext {
-  tenantId: string;
-  userId: string;
+  workspaceId: string;
   serverId: string;
 }
 

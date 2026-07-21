@@ -13,7 +13,7 @@ export class ConversationService {
       data: {
         id,
         title: body?.title || 'New Conversation',
-        userId: 'test-user-id',
+        workspaceId: 'test-workspace-id',
         metadata: body?.metadata || {},
       }
     });
@@ -29,7 +29,7 @@ export class ConversationService {
     let conv = await this.prisma.conversation.findUnique({ where: { id } });
     if (!conv) {
       conv = await this.prisma.conversation.create({
-        data: { id, title: 'Recovered Conversation', userId: 'test-user-id' }
+        data: { id, title: 'Recovered Conversation', workspaceId: 'test-workspace-id' }
       });
     }
     return this.mapConversation(conv);
@@ -46,7 +46,7 @@ export class ConversationService {
   async getMessages(conversationId: string): Promise<Message[]> {
     const conv = await this.prisma.conversation.findUnique({ where: { id: conversationId } });
     if (!conv) {
-      await this.prisma.conversation.create({ data: { id: conversationId, title: 'Recovered Conversation', userId: 'test-user-id' } });
+      await this.prisma.conversation.create({ data: { id: conversationId, title: 'Recovered Conversation', workspaceId: 'test-workspace-id' } });
     }
     const msgs = await this.prisma.message.findMany({
       where: { conversationId },
@@ -58,7 +58,7 @@ export class ConversationService {
   async appendMessage(conversationId: string, message: Message): Promise<Message> {
     const conv = await this.prisma.conversation.findUnique({ where: { id: conversationId } });
     if (!conv) {
-      await this.prisma.conversation.create({ data: { id: conversationId, title: 'Recovered Conversation', userId: 'test-user-id' } });
+      await this.prisma.conversation.create({ data: { id: conversationId, title: 'Recovered Conversation', workspaceId: 'test-workspace-id' } });
     }
     
     const msgId = message.id || crypto.randomUUID();

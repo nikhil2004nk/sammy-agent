@@ -45,8 +45,8 @@ export class ToolExecutorService {
 
       // 3. Resolve Connection Context
       const connectionContext: ConnectionContext = {
-        tenantId: 'default', // Hardcoded until multi-tenant is fully active
-        userId: context.userId,
+        workspaceId: context.workspaceId || 'default',
+        
         serverId: toolMetadata.serverId,
       };
       const resolvedConnection = await this.connectionFactory.resolveConnection(connectionContext);

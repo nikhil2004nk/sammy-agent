@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+import { AuthModule } from './modules/auth/auth.module';
+import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 import { DatabaseModule } from './modules/database/database.module';
 import { ConfigModule } from './modules/config/config.module';
 import { EventsModule } from './modules/events/events.module';
@@ -23,6 +25,8 @@ import { ResolverModule } from './modules/resolver/resolver.module';
     ObservabilityModule,
     EventsModule,
     DatabaseModule,
+    AuthModule,
+    WorkspacesModule,
     
     LlmModule,
     PromptsModule,

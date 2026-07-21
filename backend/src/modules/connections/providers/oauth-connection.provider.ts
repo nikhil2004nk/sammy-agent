@@ -19,7 +19,7 @@ export class OAuthConnectionProvider implements ConnectionProvider {
   }
 
   async resolveConnection(context: ConnectionContext): Promise<ResolvedConnection> {
-    this.logger.debug(`Resolving connection for ${context.serverId} / user ${context.userId}`);
+    this.logger.debug(`Resolving connection for ${context.serverId} / workspace ${context.workspaceId}`);
 
     let credential = await this.repository.getCredential(context);
 

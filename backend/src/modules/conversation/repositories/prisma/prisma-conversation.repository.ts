@@ -7,11 +7,10 @@ import { Conversation, Message } from '../../conversation.types';
 export class PrismaConversationRepository implements IConversationRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async startConversation(tenantId: string | undefined, userId: string, metadata?: Record<string, any>): Promise<Conversation> {
+  async startConversation(workspaceId: string, metadata?: Record<string, any>): Promise<Conversation> {
     const conv = await this.prisma.conversation.create({
       data: {
-        tenantId,
-        userId,
+        workspaceId,
         metadata: metadata || {},
       },
     });

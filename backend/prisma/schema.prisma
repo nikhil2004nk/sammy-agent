@@ -9,25 +9,92 @@ generator client {
   previewFeatures = ["postgresqlExtensions"]
 }
 
-model Tenant {
+// -------------------------------------------------------------
+// Identity & Workspace Foundation
+// -------------------------------------------------------------
+
+model User {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships WorkspaceMember[]
+  sessions    Session[]
+}
+
+model Session {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @db.Uuid
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  lastUsedAt       DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  agents    Agent[]
+  members       WorkspaceMember[]
+  connections   Connection[]
+  agents        Agent[]
+  conversations Conversation[]
 }
+
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
+model WorkspaceMember {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String   @db.Uuid
+  userId      String   @db.Uuid
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+}
+
+model Connection {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String   @db.Uuid
+  provider    String   // e.g., 'gmail', 'github'
+  status      String   // 'active', 'error', 'pending'
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------------
+// Platform Models
+// -------------------------------------------------------------
 
 model Agent {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId     String?  @db.Uuid
+  workspaceId  String?  @db.Uuid
   name         String
   systemPrompt String   @db.Text
   capabilities Json     // Array of allowed tools
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant       Tenant?        @relation(fields: [tenantId], references: [id])
+  workspace    Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   conversations Conversation[]
   modelConfigs  ModelConfig[]
 }
@@ -42,21 +109,21 @@ model ModelConfig {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  agent       Agent    @relation(fields: [agentId], references: [id])
+  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
 }
 
 model Conversation {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agentId   String?  @db.Uuid
-  tenantId  String?  @db.Uuid
-  userId    String
-  title     String?
-  metadata  Json?
-  version   Int      @default(1)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agentId     String?  @db.Uuid
+  workspaceId String?  @db.Uuid
+  title       String?
+  metadata    Json?
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  agent     Agent?      @relation(fields: [agentId], references: [id])
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  agent     Agent?     @relation(fields: [agentId], references: [id])
   runs      Run[]
   messages  Message[]
   events    Event[]
@@ -179,4 +246,3 @@ model Event {
   run             Run?           @relation(fields: [runId], references: [id], onDelete: Cascade)
   reasoningStep   ReasoningStep? @relation(fields: [reasoningStepId], references: [id], onDelete: Cascade)
 }
-

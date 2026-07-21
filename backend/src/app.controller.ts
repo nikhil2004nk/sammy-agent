@@ -21,7 +21,7 @@ export class AppController {
     const context: ExecutionContext = {
       traceId: crypto.randomUUID(),
       conversationId: body.conversationId || crypto.randomUUID(),
-      userId: 'test-user-id', // Would come from Auth JWT
+      workspaceId: 'test-workspace-id', // Would come from Auth JWT
       agentId: body.agentId || crypto.randomUUID(),
       runId: crypto.randomUUID(),
       modelConfig: {

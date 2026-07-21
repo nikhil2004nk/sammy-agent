@@ -4,8 +4,22 @@ import { useUIStore } from '@/store/ui';
 import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import { apiClient } from '@/lib/api-client';
+import { useAuthStore } from '@/store/auth.store';
+import { useRouter } from 'next/navigation';
+
 export function Topbar() {
   const { sidebarOpen, toggleSidebar, activityPanelOpen, toggleActivityPanel } = useUIStore();
+  const { workspaces, activeWorkspaceId, logout } = useAuthStore();
+  const router = useRouter();
+
+  const activeWorkspace = workspaces.find(w => w.id === activeWorkspaceId);
+
+  const handleLogout = async () => {
+    await apiClient('/auth/logout', { method: 'POST', requireAuth: true });
+    logout();
+    router.push('/login');
+  };
 
   return (
     <header className="h-14 border-b bg-background flex items-center justify-between px-4 shrink-0">
@@ -14,9 +28,8 @@ export function Topbar() {
           {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
         </Button>
         
-        {/* Placeholder for Context/Breadcrumbs */}
         <div className="text-sm font-medium">
-          Active Workspace
+          {activeWorkspace ? activeWorkspace.name : 'No Workspace'}
         </div>
       </div>
 
@@ -31,6 +44,10 @@ export function Topbar() {
         
         <Button variant="ghost" size="icon" onClick={toggleActivityPanel}>
           {activityPanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+        </Button>
+
+        <Button variant="outline" size="sm" onClick={handleLogout} className="ml-2">
+          Logout
         </Button>
       </div>
     </header>

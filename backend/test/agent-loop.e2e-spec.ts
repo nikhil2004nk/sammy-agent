@@ -97,12 +97,12 @@ describe('Agent Loop (e2e)', () => {
 
     const conversation = conversationService.createConversation();
     
-    const finalAnswer = await agentLoop.runLoop(context, conversation.id, 'Please echo "Hello Loop"');
+    const finalAnswer = await agentLoop.runLoop(context, conversationId, 'Please echo "Hello Loop"');
     
     expect(finalAnswer).toBe('Final Answer: The tool echoed Hello Loop');
 
     // Verify conversation state
-    const messages = conversationService.getMessages(conversation.id);
+    const messages = conversationService.getMessages(conversationId);
     
     expect(messages.length).toBe(4);
     expect(messages[0].role).toBe('user');

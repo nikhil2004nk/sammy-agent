@@ -69,7 +69,7 @@ export class ConversationController {
       traceId: crypto.randomUUID(),
       conversationId: id,
       runId: crypto.randomUUID(),
-      userId: 'test-user-id',
+      workspaceId: 'test-workspace-id',
       agentId: crypto.randomUUID(),
       modelConfig: {
         provider: 'openai',

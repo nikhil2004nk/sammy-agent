@@ -4,8 +4,7 @@ export interface ExecutionContext {
   readonly conversationId: string;
   readonly runId: string;
   readonly agentId: string;
-  readonly tenantId?: string;
-  readonly userId: string;
+  readonly workspaceId: string;
   readonly traceId: string;
   readonly sessionId?: string;
   readonly requestId?: string;

@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Sidebar } from './Sidebar';
+import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/auth.store';
 import { SecondarySidebar } from './SecondarySidebar';
 import { Topbar } from './Topbar';
 import { ActivityPanel } from './ActivityPanel';
@@ -14,6 +16,19 @@ interface ShellLayoutProps {
 }
 
 export function ShellLayout({ children }: ShellLayoutProps) {
+  const { isAuthenticated, isLoading } = useAuthStore();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  if (isLoading || !isAuthenticated) {
+    return null; // Or a loading spinner
+  }
+
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
       <CommandPalette />

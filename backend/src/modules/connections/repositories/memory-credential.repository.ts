@@ -5,13 +5,13 @@ import { EncryptionService } from '../interfaces/encryption-service.interface';
 
 @Injectable()
 export class MemoryCredentialRepository implements CredentialRepository {
-  // Key format: tenantId:userId:serverId
+  // Key format: workspaceId:serverId
   private storage = new Map<string, string>();
 
   constructor(private readonly encryptionService: EncryptionService) {}
 
   private getKey(context: ConnectionContext): string {
-    return `${context.tenantId}:${context.userId}:${context.serverId}`;
+    return `${context.workspaceId}:${context.serverId}`;
   }
 
   async saveCredential(context: ConnectionContext, credential: ConnectionCredential): Promise<void> {
