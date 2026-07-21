@@ -39,11 +39,12 @@ interface BackendRun {
   id: string;
   conversationId: string;
   status: string;
-  createdAt: number;
-  endedAt?: number;
+  startedAt: number;
+  finishedAt?: number;
+  duration?: number;
   terminationReason?: string;
   nodes?: BackendNode[];
-  version: number;
+  version?: number;
 }
 
 // ---- Adapters ----
@@ -87,9 +88,9 @@ function adaptRun(b: BackendRun): Run {
     id: b.id,
     conversationId: b.conversationId,
     status: normalizeStatus(b.status),
-    startedAt: new Date(b.createdAt).toISOString(),
-    finishedAt: b.endedAt ? new Date(b.endedAt).toISOString() : undefined,
-    durationMs: b.endedAt ? b.endedAt - b.createdAt : undefined,
+    startedAt: new Date(b.startedAt).toISOString(),
+    finishedAt: b.finishedAt ? new Date(b.finishedAt).toISOString() : undefined,
+    durationMs: b.duration,
     totalTools: toolCount,
     nodes,
   };
@@ -141,15 +142,6 @@ export function useLiveRun(conversationId: string | null): Run | null {
       return data.map(adaptRun);
     },
     enabled: !!conversationId,
-    refetchInterval: (query) => {
-      const latest = query.state.data?.[0];
-      // If we don't have a run, or the latest run is finished/failed, poll every 2s
-      // to detect when a new run starts. Once a run is active, SSE takes over.
-      if (!latest || latest.status === 'Completed' || latest.status === 'Failed' || latest.status === 'Cancelled') {
-        return 2000;
-      }
-      return false;
-    }
   });
 
   const latestRun = runs?.[0] ?? null;
