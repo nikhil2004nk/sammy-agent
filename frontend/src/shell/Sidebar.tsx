@@ -3,9 +3,11 @@
 import { useUIStore } from '@/store/ui';
 import { Bot, MessageSquare, Settings, LayoutDashboard, BrainCircuit, Workflow, Plug } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export function Sidebar() {
   const { sidebarOpen, sidebarMode, setSidebarMode } = useUIStore();
+  const router = useRouter();
 
   if (!sidebarOpen) return null;
 
@@ -32,7 +34,16 @@ export function Sidebar() {
             return (
               <li key={item.mode} className="w-full flex justify-center">
                 <button
-                  onClick={() => setSidebarMode(item.mode)}
+                  onClick={() => {
+                    setSidebarMode(item.mode);
+                    if (item.mode === 'settings') {
+                      router.push('/settings');
+                    } else if (item.mode === 'connections') {
+                      router.push('/connections');
+                    } else if (item.mode === 'dashboard') {
+                      router.push('/');
+                    }
+                  }}
                   title={item.label}
                   className={cn(
                     "flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200",
