@@ -9,13 +9,14 @@ import { CredentialRepository } from './interfaces/credential-repository.interfa
 import { CredentialService } from './credentials/credential.service';
 import { GoogleConnectionProvider } from './providers/google-connection.provider';
 import { ConnectionsController } from './connections.controller';
+import { OauthController } from './oauth.controller';
 import { McpModule } from '../mcp/mcp.module';
 import { ProviderAdapterRegistry } from '../mcp/provider-adapter.registry';
 import { GoogleMcpAdapter } from '../mcp/adapter/google-mcp.adapter';
 
 @Module({
   imports: [ConfigModule, McpModule],
-  controllers: [ConnectionsController],
+  controllers: [ConnectionsController, OauthController],
   providers: [
     {
       provide: EncryptionService,

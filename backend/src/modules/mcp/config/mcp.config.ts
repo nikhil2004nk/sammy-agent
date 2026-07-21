@@ -24,7 +24,23 @@ export interface McpConfig {
 export default registerAs('mcp', (): McpConfig => ({
   servers: {
     gmail: {
-      enabled: false,
+      enabled: true,
+      transport: 'stdio',
+      startup: 'async',
+      command: 'node',
+      args: ['../gmail-mcp-server/dist/index.js'],
+      timeout: 30000,
+      retry: {
+        maxAttempts: 3,
+        backoffMs: 2000,
+      },
+      healthInterval: 30000,
+      auth: {
+        connectionId: 'google' // this tells the MCP manager to look up the google connection before starting this server
+      }
+    },
+    'mock-gmail': {
+      enabled: true,
       transport: 'stdio',
       startup: 'async',
       command: 'node',

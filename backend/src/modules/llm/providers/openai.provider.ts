@@ -61,6 +61,15 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
       const startTime = Date.now();
       const startDate = new Date();
 
+      const openAiTools = tools && tools.length > 0 ? tools.map(t => ({
+        type: 'function' as const,
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.inputSchema
+        }
+      })) : undefined;
+
       if (onToken) {
         const stream = await this.openai.chat.completions.create({
           model: this.model,
@@ -69,11 +78,13 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
           max_tokens: maxTokens,
           stream: true,
           stream_options: { include_usage: true },
+          tools: openAiTools,
         });
 
         let fullContent = '';
         let finishReason = '';
         let usage = { prompt_tokens: 0, completion_tokens: 0 };
+        let toolCalls: any[] = [];
 
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta?.content || '';
@@ -81,6 +92,19 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
             fullContent += delta;
             onToken(delta);
           }
+          
+          if (chunk.choices[0]?.delta?.tool_calls) {
+            for (const tc of chunk.choices[0].delta.tool_calls) {
+              const index = tc.index;
+              if (!toolCalls[index]) {
+                toolCalls[index] = { id: tc.id, type: tc.type, function: { name: tc.function?.name || '', arguments: '' } };
+              }
+              if (tc.function?.arguments) {
+                toolCalls[index].function.arguments += tc.function.arguments;
+              }
+            }
+          }
+
           if (chunk.choices[0]?.finish_reason) {
             finishReason = chunk.choices[0].finish_reason;
           }
@@ -106,6 +130,11 @@ Finish Reason  ${finishReason || 'unknown'}
 
         return {
           content: fullContent,
+          toolCalls: toolCalls.length > 0 ? toolCalls.map(tc => ({
+            id: tc.id,
+            name: tc.function.name,
+            arguments: tc.function.arguments
+          })) : undefined,
           tokensUsed: usage.prompt_tokens + usage.completion_tokens,
           usage: {
             prompt: usage.prompt_tokens,
@@ -121,6 +150,7 @@ Finish Reason  ${finishReason || 'unknown'}
           messages: openAiMessages,
           temperature,
           max_tokens: maxTokens,
+          tools: openAiTools,
         });
 
         const endTime = Date.now();

@@ -39,7 +39,10 @@ export class GoogleConnectionProvider implements ConnectionProvider {
       transport: { type: 'stdio' }, // Google adapter will likely be a local adapter that uses HTTP underneath, so stdio or a custom transport type might be used
       authentication: {
         environment: {
-          GOOGLE_ACCESS_TOKEN: credential.values.accessToken
+          GOOGLE_ACCESS_TOKEN: credential.values.accessToken,
+          GOOGLE_REFRESH_TOKEN: credential.values.refreshToken || '',
+          GOOGLE_CLIENT_ID: this.configService.get<string>('GOOGLE_CLIENT_ID') || '',
+          GOOGLE_CLIENT_SECRET: this.configService.get<string>('GOOGLE_CLIENT_SECRET') || ''
         },
         credentials: credential
       }
