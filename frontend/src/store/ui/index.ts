@@ -3,7 +3,7 @@ import { create } from 'zustand';
 interface UIState {
   sidebarOpen: boolean;
   activityPanelOpen: boolean;
-  sidebarMode: 'dashboard' | 'conversation' | 'agent' | 'memory' | 'workflow' | 'settings' | 'connections';
+  sidebarMode: 'agent' | 'workflows' | 'executions' | 'approvals' | 'scheduler' | 'connections' | 'knowledge' | 'settings';
   activeConversationId: string | null;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
@@ -16,7 +16,7 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
   sidebarOpen: true,
   activityPanelOpen: true,
-  sidebarMode: 'conversation',
+  sidebarMode: 'workflows',
   activeConversationId: null,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),

@@ -1,7 +1,7 @@
 'use client';
 
 import { useUIStore } from '@/store/ui';
-import { Bot, MessageSquare, Settings, LayoutDashboard, BrainCircuit, Workflow, Plug } from 'lucide-react';
+import { Bot, Settings, Workflow, Plug, Activity, CheckSquare, CalendarClock, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
@@ -12,12 +12,13 @@ export function Sidebar() {
   if (!sidebarOpen) return null;
 
   const navItems = [
-    { mode: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { mode: 'conversation', icon: MessageSquare, label: 'Conversations' },
     { mode: 'agent', icon: Bot, label: 'Agents' },
-    { mode: 'memory', icon: BrainCircuit, label: 'Memory' },
-    { mode: 'workflow', icon: Workflow, label: 'Workflow' },
+    { mode: 'workflows', icon: Workflow, label: 'Workflows' },
+    { mode: 'executions', icon: Activity, label: 'Executions' },
+    { mode: 'approvals', icon: CheckSquare, label: 'Approvals' },
+    { mode: 'scheduler', icon: CalendarClock, label: 'Scheduler' },
     { mode: 'connections', icon: Plug, label: 'Connections' },
+    { mode: 'knowledge', icon: BookOpen, label: 'Knowledge' },
     { mode: 'settings', icon: Settings, label: 'Settings' },
   ] as const;
 
@@ -40,8 +41,18 @@ export function Sidebar() {
                       router.push('/settings');
                     } else if (item.mode === 'connections') {
                       router.push('/connections');
-                    } else if (item.mode === 'dashboard') {
-                      router.push('/');
+                    } else if (item.mode === 'agent') {
+                      router.push('/agents');
+                    } else if (item.mode === 'workflows') {
+                      router.push('/workflows');
+                    } else if (item.mode === 'executions') {
+                      router.push('/executions');
+                    } else if (item.mode === 'approvals') {
+                      router.push('/approvals');
+                    } else if (item.mode === 'scheduler') {
+                      router.push('/scheduler');
+                    } else if (item.mode === 'knowledge') {
+                      router.push('/knowledge');
                     }
                   }}
                   title={item.label}
