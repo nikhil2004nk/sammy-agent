@@ -4,9 +4,7 @@ import React from 'react';
 import { Sidebar } from './Sidebar';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
-import { SecondarySidebar } from './SecondarySidebar';
 import { Topbar } from './Topbar';
-import { ActivityPanel } from './ActivityPanel';
 import { StatusBar } from './StatusBar';
 import { CommandPalette } from './CommandPalette';
 import { Toaster } from '@/components/ui/sonner';
@@ -30,30 +28,26 @@ export function ShellLayout({ children }: ShellLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
+    <div className="flex flex-col h-screen w-full bg-background text-foreground overflow-hidden font-sans">
       <CommandPalette />
       <Toaster />
       
-      {/* Left Sidebar */}
-      <Sidebar />
-      <SecondarySidebar />
+      {/* Topbar */}
+      <Topbar />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Topbar />
-        
-        <main className="flex-1 overflow-hidden relative flex">
-          {/* Main Module (e.g. Conversation Panel) */}
-          <div className="flex-1 overflow-auto bg-background">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left Sidebar */}
+        <Sidebar />
+
+        {/* Main Content Area */}
+        <main className="flex-1 overflow-auto bg-surface relative">
+          <div className="h-full">
             {children}
           </div>
-
-          {/* Right Activity Panel */}
-          <ActivityPanel />
         </main>
-
-        <StatusBar />
       </div>
+
+      <StatusBar />
     </div>
   );
 }

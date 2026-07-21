@@ -1,74 +1,87 @@
 'use client';
 
-import { useUIStore } from '@/store/ui';
-import { Bot, Settings, Workflow, Plug, Activity, CheckSquare, CalendarClock, BookOpen } from 'lucide-react';
+import { 
+  Bot, Settings, Workflow, Plug, Activity, 
+  CheckSquare, CalendarClock, BookOpen, LayoutDashboard, Database
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export function Sidebar() {
-  const { sidebarOpen, sidebarMode, setSidebarMode } = useUIStore();
   const router = useRouter();
+  const pathname = usePathname();
 
-  if (!sidebarOpen) return null;
-
-  const navItems = [
-    { mode: 'agent', icon: Bot, label: 'Agents' },
-    { mode: 'workflows', icon: Workflow, label: 'Workflows' },
-    { mode: 'executions', icon: Activity, label: 'Executions' },
-    { mode: 'approvals', icon: CheckSquare, label: 'Approvals' },
-    { mode: 'scheduler', icon: CalendarClock, label: 'Scheduler' },
-    { mode: 'connections', icon: Plug, label: 'Connections' },
-    { mode: 'knowledge', icon: BookOpen, label: 'Knowledge' },
-    { mode: 'settings', icon: Settings, label: 'Settings' },
-  ] as const;
+  const groups = [
+    {
+      title: "Observe",
+      items: [
+        { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { href: '/observability', icon: Activity, label: 'Observability' },
+      ]
+    },
+    {
+      title: "Build",
+      items: [
+        { href: '/agents', icon: Bot, label: 'Agents' },
+        { href: '/workflows', icon: Workflow, label: 'Workflows' },
+        { href: '/knowledge', icon: BookOpen, label: 'Knowledge' },
+      ]
+    },
+    {
+      title: "Operate",
+      items: [
+        { href: '/conversations', icon: Bot, label: 'Conversations' },
+        { href: '/executions', icon: Activity, label: 'Executions' },
+        { href: '/context', icon: Database, label: 'Context' },
+        { href: '/approvals', icon: CheckSquare, label: 'Approvals' },
+        { href: '/scheduler', icon: CalendarClock, label: 'Scheduler' },
+      ]
+    },
+    {
+      title: "Connect",
+      items: [
+        { href: '/integrations', icon: Plug, label: 'Integrations' },
+      ]
+    },
+    {
+      title: "Manage",
+      items: [
+        { href: '/settings', icon: Settings, label: 'Settings' },
+      ]
+    }
+  ];
 
   return (
-    <aside className="w-16 border-r bg-background flex flex-col h-full items-center py-4">
-      <div className="mb-8 flex items-center justify-center w-full">
-        <Bot className="w-8 h-8 text-primary" />
-      </div>
-      
-      <nav className="flex-1 w-full overflow-y-auto">
-        <ul className="space-y-4 px-2 w-full flex flex-col items-center">
-          {navItems.map((item) => {
-            const isActive = sidebarMode === item.mode;
-            return (
-              <li key={item.mode} className="w-full flex justify-center">
-                <button
-                  onClick={() => {
-                    setSidebarMode(item.mode);
-                    if (item.mode === 'settings') {
-                      router.push('/settings');
-                    } else if (item.mode === 'connections') {
-                      router.push('/connections');
-                    } else if (item.mode === 'agent') {
-                      router.push('/agents');
-                    } else if (item.mode === 'workflows') {
-                      router.push('/workflows');
-                    } else if (item.mode === 'executions') {
-                      router.push('/executions');
-                    } else if (item.mode === 'approvals') {
-                      router.push('/approvals');
-                    } else if (item.mode === 'scheduler') {
-                      router.push('/scheduler');
-                    } else if (item.mode === 'knowledge') {
-                      router.push('/knowledge');
-                    }
-                  }}
-                  title={item.label}
-                  className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200",
-                    isActive 
-                      ? "bg-primary text-primary-foreground shadow-md" 
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <item.icon className="w-5 h-5" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+    <aside className="w-56 border-r border-border bg-background flex flex-col h-full overflow-y-auto hidden md:flex">
+      <nav className="flex-1 w-full py-6 px-3 space-y-6">
+        {groups.map((group) => (
+          <div key={group.title}>
+            <h4 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              {group.title}
+            </h4>
+            <ul className="space-y-0.5">
+              {group.items.map((item) => {
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <li key={item.href}>
+                    <button
+                      onClick={() => router.push(item.href)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-sm font-medium",
+                        isActive 
+                          ? "bg-primary/10 text-primary" 
+                          : "text-muted-foreground hover:bg-surface hover:text-foreground"
+                      )}
+                    >
+                      <item.icon className="w-4 h-4" />
+                      {item.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
     </aside>
   );
