@@ -1,38 +1,21 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { approvalApi, Approval } from '@/services/api/approval.service';
+import { useApprovals, useApprove, useReject } from '@/services/api/approval';
+import { Approval } from '@/services/api/approval/types';
 import { Button } from '@/components/ui/button';
 import { Check, X, Eye, Clock, AlertCircle } from 'lucide-react';
 
 export default function ApprovalsPage() {
-  const queryClient = useQueryClient();
   const [selectedApproval, setSelectedApproval] = useState<Approval | null>(null);
 
-  // Poll for approvals every 5 seconds
-  const { data: approvals, isLoading, error } = useQuery({
-    queryKey: ['approvals'],
-    queryFn: () => approvalApi.list(),
-    refetchInterval: 5000,
-  });
+  const { data: approvals, isLoading, error } = useApprovals();
 
-  const approveMutation = useMutation({
-    mutationFn: (id: string) => approvalApi.approve(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['approvals'] });
-    }
-  });
+  const approveMutation = useApprove();
+  const rejectMutation = useReject();
 
-  const rejectMutation = useMutation({
-    mutationFn: (id: string) => approvalApi.reject(id, { reason: 'Rejected via UI' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['approvals'] });
-    }
-  });
-
-  const handleApprove = (id: string) => approveMutation.mutate(id);
-  const handleReject = (id: string) => rejectMutation.mutate(id);
+  const handleApprove = (id: string) => approveMutation.mutate({ id });
+  const handleReject = (id: string) => rejectMutation.mutate({ id, payload: { reason: 'Rejected via UI' } });
 
   const pendingApprovals = approvals?.filter(a => a.status === 'Pending') || [];
   const pastApprovals = approvals?.filter(a => a.status !== 'Pending') || [];

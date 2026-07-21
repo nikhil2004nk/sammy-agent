@@ -24,20 +24,24 @@ export class WorkflowService {
     });
   }
 
-  async findOne(workflowId: string) {
+  async findOne(workspaceId: string, workflowId: string) {
     const workflow = await this.prisma.workflow.findUnique({ where: { id: workflowId } });
-    if (!workflow) throw new NotFoundException(`Workflow '${workflowId}' not found`);
+    if (!workflow || workflow.workspaceId !== workspaceId) {
+      throw new NotFoundException(`Workflow '${workflowId}' not found in this workspace`);
+    }
     return workflow;
   }
 
-  async activate(workflowId: string) {
+  async activate(workspaceId: string, workflowId: string) {
+    await this.findOne(workspaceId, workflowId); // verify ownership
     return this.prisma.workflow.update({
       where: { id: workflowId },
       data: { status: WorkflowStatus.ACTIVE }
     });
   }
 
-  async archive(workflowId: string) {
+  async archive(workspaceId: string, workflowId: string) {
+    await this.findOne(workspaceId, workflowId); // verify ownership
     return this.prisma.workflow.update({
       where: { id: workflowId },
       data: { status: WorkflowStatus.ARCHIVED }

@@ -7,7 +7,22 @@ import { AppCard } from "@/components/primitives/AppCard";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { Bot, CheckSquare, CalendarClock, AlertTriangle, Activity, Workflow, MessageSquare, Cloud } from "lucide-react";
 
+import { useDashboardViewModel } from './useDashboardViewModel';
+import { formatDistanceToNow } from 'date-fns';
+
 export default function DashboardPage() {
+  const { 
+    isLoading, 
+    metrics, 
+    recentExecutions, 
+    connectedProviders, 
+    recentConversations 
+  } = useDashboardViewModel();
+
+  if (isLoading) {
+    return <div className="p-8 text-muted-foreground flex justify-center items-center h-full">Loading dashboard...</div>;
+  }
+
   return (
     <div className="max-w-6xl mx-auto py-8">
       <PageHeader 
@@ -18,25 +33,25 @@ export default function DashboardPage() {
       <SectionHeader title="Today's Activity" className="mt-8" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <MetricCard 
-          title="Running Agents" 
-          value="12" 
+          title="Running Executions" 
+          value={metrics.runningExecutions.toString()} 
           icon={<Bot className="w-4 h-4" />}
           trend={{ value: "2", isPositive: true }}
         />
         <MetricCard 
           title="Pending Approvals" 
-          value="2" 
+          value={metrics.pendingApprovals.toString()} 
           icon={<CheckSquare className="w-4 h-4" />}
           trend={{ value: "1", isPositive: false }}
         />
         <MetricCard 
           title="Scheduled Jobs" 
-          value="18" 
+          value={metrics.scheduledJobs.toString()} 
           icon={<CalendarClock className="w-4 h-4" />}
         />
         <MetricCard 
           title="Failed Runs" 
-          value="1" 
+          value={metrics.failedExecutions.toString()} 
           icon={<AlertTriangle className="w-4 h-4" />}
           trend={{ value: "1", isPositive: false }}
         />
@@ -46,72 +61,53 @@ export default function DashboardPage() {
         <div>
           <SectionHeader title="Recent Executions" />
           <div className="space-y-3">
-            <AppCard hoverable className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-2 rounded-lg">
-                  <Activity className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Morning Report</h4>
-                  <p className="text-xs text-muted-foreground">Workflow • 10 mins ago</p>
-                </div>
+            {recentExecutions.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground border border-dashed rounded-xl">
+                No recent executions.
               </div>
-              <StatusBadge status="Completed" variant="success" />
-            </AppCard>
-            <AppCard hoverable className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-2 rounded-lg">
-                  <Bot className="w-4 h-4 text-primary" />
+            ) : recentExecutions.map(execution => (
+              <AppCard key={execution.id} hoverable className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-primary/10 p-2 rounded-lg">
+                    <Activity className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium">Run {execution.id.split('-')[0]}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {execution.workflowId || 'Agent'} • {execution.startedAt ? formatDistanceToNow(execution.startedAt, { addSuffix: true }) : 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium">Research Agent</h4>
-                  <p className="text-xs text-muted-foreground">Agent • Running</p>
-                </div>
-              </div>
-              <StatusBadge status="Running" variant="info" />
-            </AppCard>
-            <AppCard hoverable className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary/10 p-2 rounded-lg">
-                  <CheckSquare className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Email Summary</h4>
-                  <p className="text-xs text-muted-foreground">Approval • 1 hour ago</p>
-                </div>
-              </div>
-              <StatusBadge status="Waiting" variant="warning" />
-            </AppCard>
+                <StatusBadge 
+                  status={execution.status} 
+                  variant={['Completed'].includes(execution.status) ? 'success' : ['Failed'].includes(execution.status) ? 'danger' : 'info'} 
+                />
+              </AppCard>
+            ))}
           </div>
         </div>
 
         <div>
           <SectionHeader title="Connected Providers" />
           <div className="space-y-3">
-            <AppCard className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-surface p-2 rounded-lg border border-border">
-                  <Cloud className="w-4 h-4 text-foreground" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Google Workspace</h4>
-                  <p className="text-xs text-muted-foreground">gmail, drive, calendar</p>
-                </div>
+            {connectedProviders.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground border border-dashed rounded-xl">
+                No active connections.
               </div>
-              <StatusBadge status="Connected" variant="success" />
-            </AppCard>
-            <AppCard className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-surface p-2 rounded-lg border border-border">
-                  <Cloud className="w-4 h-4 text-foreground" />
+            ) : connectedProviders.map(provider => (
+              <AppCard key={provider.id} className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-surface p-2 rounded-lg border border-border">
+                    <Cloud className="w-4 h-4 text-foreground" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium">{provider.name}</h4>
+                    <p className="text-xs text-muted-foreground">{provider.provider}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium">GitHub</h4>
-                  <p className="text-xs text-muted-foreground">repos, issues, prs</p>
-                </div>
-              </div>
-              <StatusBadge status="Connected" variant="success" />
-            </AppCard>
+                <StatusBadge status="Connected" variant="success" />
+              </AppCard>
+            ))}
           </div>
         </div>
       </div>
@@ -120,28 +116,25 @@ export default function DashboardPage() {
         <div>
           <SectionHeader title="Recent Conversations" />
           <div className="space-y-3">
-             <AppCard hoverable className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-surface p-2 rounded-lg border border-border">
-                  <MessageSquare className="w-4 h-4 text-foreground" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-medium">Research Tesla</h4>
-                  <p className="text-xs text-muted-foreground">Yesterday</p>
-                </div>
+            {recentConversations.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground border border-dashed rounded-xl">
+                No recent conversations.
               </div>
-            </AppCard>
-            <AppCard hoverable className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-surface p-2 rounded-lg border border-border">
-                  <MessageSquare className="w-4 h-4 text-foreground" />
+            ) : recentConversations.map(conversation => (
+              <AppCard key={conversation.id} hoverable className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-surface p-2 rounded-lg border border-border">
+                    <MessageSquare className="w-4 h-4 text-foreground" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-medium">{conversation.title || 'Untitled'}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(conversation.updatedAt, { addSuffix: true })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium">Daily Report</h4>
-                  <p className="text-xs text-muted-foreground">2 hours ago</p>
-                </div>
-              </div>
-            </AppCard>
+              </AppCard>
+            ))}
           </div>
         </div>
 

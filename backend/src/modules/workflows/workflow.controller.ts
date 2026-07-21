@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Patch, Param, Body } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
 import { WorkflowService } from './workflow.service';
 import { WorkflowRunnerService } from './workflow-runner.service';
 import { WorkflowGraph } from './workflow.types';
 import { ExecutionContext } from '../../common/execution-context';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { WorkspaceGuard } from '../workspaces/guards/workspace.guard';
 import * as crypto from 'crypto';
 
+@UseGuards(JwtAuthGuard, WorkspaceGuard)
 @Controller('workspaces/:workspaceId/workflows')
 export class WorkflowController {
   constructor(
@@ -26,18 +29,27 @@ export class WorkflowController {
   }
 
   @Get(':workflowId')
-  async getOne(@Param('workflowId') workflowId: string) {
-    return this.workflowService.findOne(workflowId);
+  async getOne(
+    @Param('workspaceId') workspaceId: string,
+    @Param('workflowId') workflowId: string
+  ) {
+    return this.workflowService.findOne(workspaceId, workflowId);
   }
 
   @Patch(':workflowId/activate')
-  async activate(@Param('workflowId') workflowId: string) {
-    return this.workflowService.activate(workflowId);
+  async activate(
+    @Param('workspaceId') workspaceId: string,
+    @Param('workflowId') workflowId: string
+  ) {
+    return this.workflowService.activate(workspaceId, workflowId);
   }
 
   @Patch(':workflowId/archive')
-  async archive(@Param('workflowId') workflowId: string) {
-    return this.workflowService.archive(workflowId);
+  async archive(
+    @Param('workspaceId') workspaceId: string,
+    @Param('workflowId') workflowId: string
+  ) {
+    return this.workflowService.archive(workspaceId, workflowId);
   }
 
   @Post(':workflowId/run')

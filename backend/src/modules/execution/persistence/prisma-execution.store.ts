@@ -68,6 +68,23 @@ export class PrismaExecutionStore implements IExecutionStore {
     }));
   }
 
+  async getRunsByWorkspaceId(workspaceId: string): Promise<Run[]> {
+    const runs = await this.prisma.run.findMany({
+      where: { conversation: { workspaceId } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return runs.map((run: any) => ({
+      id: run.id,
+      conversationId: run.conversationId,
+      status: run.status as any,
+      createdAt: run.createdAt.getTime(),
+      endedAt: run.endedAt ? run.endedAt.getTime() : undefined,
+      terminationReason: run.terminationReason || undefined,
+      metadata: (run.metadata as Record<string, any>) || undefined,
+      version: run.version,
+    }));
+  }
+
   async createNode(node: ExecutionNode): Promise<void> {
     await this.prisma.executionNode.create({
       data: {

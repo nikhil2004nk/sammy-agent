@@ -17,7 +17,7 @@ export class WorkflowRunnerService {
   ) {}
 
   async run(workflowId: string, context: ExecutionContext): Promise<WorkflowRunResult> {
-    const workflowRecord = await this.workflowService.findOne(workflowId);
+    const workflowRecord = await this.workflowService.findOne(context.workspaceId, workflowId);
     const graph = workflowRecord.graph as unknown as WorkflowGraph;
 
     const workflowRun = await this.prisma.workflowRun.create({

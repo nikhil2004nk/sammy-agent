@@ -26,6 +26,12 @@ export class InMemoryExecutionStore implements IExecutionStore {
     return Array.from(this.runs.values()).filter(r => r.conversationId === conversationId).sort((a, b) => b.createdAt - a.createdAt);
   }
 
+  async getRunsByWorkspaceId(workspaceId: string): Promise<Run[]> {
+    // In-memory mock: we don't have access to conversations here to filter by workspace,
+    // so we just return all runs for simplicity in the mock.
+    return Array.from(this.runs.values()).sort((a, b) => b.createdAt - a.createdAt);
+  }
+
   async createNode(node: ExecutionNode): Promise<void> {
     this.nodes.set(node.id, node);
   }

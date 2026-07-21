@@ -68,6 +68,21 @@ export class ApprovalService {
     });
   }
 
+  async getForWorkspace(workspaceId: string) {
+    // Note: To get workspace approvals, we need to join across conversation -> run
+    // Since ApprovalRequest doesn't have explicit relations, we find runs first.
+    const runs = await this.prisma.run.findMany({
+      where: { conversation: { workspaceId } },
+      select: { id: true }
+    });
+    const runIds = runs.map(r => r.id);
+    
+    return this.prisma.approvalRequest.findMany({
+      where: { runId: { in: runIds } },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
   /**
    * Poll the DB until the approval is decided or we time out.
    * The calling code (agent loop) awaits this — the run is effectively paused.

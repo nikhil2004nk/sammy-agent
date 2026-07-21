@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { executionApi } from '@/services/api/execution.service';
+import { useExecution, useCancelExecution } from '@/services/api/execution';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, StopCircle, PlayCircle, Clock, Database, TerminalSquare, MessageSquare, ListTree } from 'lucide-react';
 import { format } from 'date-fns';
@@ -20,19 +19,8 @@ export default function ExecutionDetailPage() {
   const id = params.id as string;
   const [activeTab, setActiveTab] = useState<Tab>('timeline');
 
-  const { data: execution, isLoading, error } = useQuery({
-    queryKey: ['execution', id],
-    queryFn: () => executionApi.get(id),
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === 'Completed' || status === 'Failed' || status === 'Cancelled') return false;
-      return 3000;
-    },
-  });
-
-  const cancelMutation = useMutation({
-    mutationFn: () => executionApi.cancel(id),
-  });
+  const { data: execution, isLoading, error } = useExecution(id);
+  const cancelMutation = useCancelExecution();
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -75,7 +63,7 @@ export default function ExecutionDetailPage() {
             <Button 
               variant="outline" 
               className="text-danger border-danger/20 hover:bg-danger/10"
-              onClick={() => cancelMutation.mutate()}
+              onClick={() => cancelMutation.mutate(id)}
               disabled={cancelMutation.isPending}
             >
               <StopCircle className="w-4 h-4 mr-2" /> Cancel
@@ -94,11 +82,11 @@ export default function ExecutionDetailPage() {
           </div>
           <div>
             <span className="text-muted-foreground">Cost: </span>
-            <span className="font-medium">$0.024</span>
+            <span className="font-medium">-</span>
           </div>
           <div>
             <span className="text-muted-foreground">Tokens: </span>
-            <span className="font-medium">4,231</span>
+            <span className="font-medium">-</span>
           </div>
         </div>
       </div>
@@ -129,25 +117,12 @@ export default function ExecutionDetailPage() {
             <div className="max-w-3xl space-y-4">
               <h3 className="text-lg font-medium mb-4">Execution Trace</h3>
               <div className="border border-border rounded-lg p-4 bg-surface/50 font-mono text-sm">
-                <div className="flex items-center gap-4 text-muted-foreground mb-3">
-                  <span className="w-16">09:30:00</span>
-                  <span className="text-foreground">Initialize Planner</span>
-                </div>
-                <div className="flex items-center gap-4 text-muted-foreground mb-3">
-                  <span className="w-16">09:30:01</span>
-                  <span className="text-primary">Retrieve Memory</span>
-                </div>
-                <div className="flex items-center gap-4 text-muted-foreground mb-3">
-                  <span className="w-16">09:30:04</span>
-                  <span className="text-warning">Tool Call: execute_url</span>
-                </div>
-                <div className="flex items-center gap-4 text-muted-foreground mb-3">
-                  <span className="w-16">09:30:12</span>
-                  <span className="text-foreground">Planner Review</span>
-                </div>
+                {!execution.logs?.length && !execution.toolCalls?.length && (
+                   <div className="text-muted-foreground py-8 text-center">No trace events available yet.</div>
+                )}
+                {/* Normally we'd map over a sorted timeline of logs and tool calls here */}
                 {execution.status === 'Completed' && (
-                  <div className="flex items-center gap-4 text-muted-foreground mt-6 pt-4 border-t border-border">
-                    <span className="w-16">09:30:15</span>
+                  <div className="flex items-center gap-4 text-muted-foreground mt-2 pt-4 border-t border-border">
                     <span className="text-success font-medium">Execution Completed</span>
                   </div>
                 )}
@@ -159,15 +134,20 @@ export default function ExecutionDetailPage() {
             <div className="max-w-4xl space-y-6">
               <h3 className="text-lg font-medium">Tool Calls</h3>
               <div className="border border-border rounded-lg divide-y divide-border bg-card">
-                <div className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="font-mono text-sm text-primary">execute_url</span>
-                    <span className="text-xs text-muted-foreground">8.2s</span>
-                  </div>
-                  <pre className="text-xs font-mono bg-background p-3 rounded text-muted-foreground">
-                    {JSON.stringify({ url: "https://api.github.com", method: "GET" }, null, 2)}
-                  </pre>
-                </div>
+                {!execution.toolCalls?.length ? (
+                  <div className="p-8 text-center text-muted-foreground">No tool calls made during this execution.</div>
+                ) : (
+                  execution.toolCalls.map((tc, idx) => (
+                    <div key={idx} className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="font-mono text-sm text-primary">{tc.name || 'unknown_tool'}</span>
+                      </div>
+                      <pre className="text-xs font-mono bg-background p-3 rounded text-muted-foreground overflow-auto">
+                        {JSON.stringify(tc, null, 2)}
+                      </pre>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}

@@ -8,14 +8,14 @@ import { Plus, Server, Cloud, ExternalLink, Settings } from 'lucide-react';
 import { AppCard } from '@/components/primitives/AppCard';
 import { StatusBadge } from '@/components/primitives/StatusBadge';
 import { Toolbar } from '@/components/primitives/Toolbar';
+import { useConnections, useDeleteConnection } from '@/services/api/connection';
 
 export default function IntegrationsPage() {
-  const cloudProviders = [
-    { id: 'google', name: 'Google Workspace', status: 'Connected', desc: 'Gmail, Drive, Calendar integration.' },
-    { id: 'github', name: 'GitHub', status: 'Connected', desc: 'Source code and PR management.' },
-    { id: 'slack', name: 'Slack', status: 'Disconnected', desc: 'Team communication and alerts.' },
-  ];
+  const { data: connections, isLoading } = useConnections();
+  const deleteMutation = useDeleteConnection();
 
+  // For UI consistency, we still hardcode MCP servers since they are local and not in the DB yet,
+  // but we map Cloud Providers from the API.
   const mcpServers = [
     { id: 'postgres', name: 'Postgres MCP', status: 'Installed', desc: 'Direct database access via MCP protocol.' },
     { id: 'redis', name: 'Redis MCP', status: 'Installed', desc: 'Cache and memory inspection.' },
@@ -49,7 +49,11 @@ export default function IntegrationsPage() {
         <div>
           <SectionHeader title="Cloud Providers" description="OAuth connections to external SaaS platforms." />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {cloudProviders.map(provider => (
+            {isLoading ? (
+              <div className="text-sm text-muted-foreground p-4">Loading connections...</div>
+            ) : connections?.length === 0 ? (
+              <div className="text-sm text-muted-foreground p-4">No connections found.</div>
+            ) : connections?.map((provider: any) => (
               <AppCard key={provider.id} hoverable className="flex flex-col h-full p-5">
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-10 h-10 rounded-xl bg-surface border border-border flex items-center justify-center">
@@ -62,7 +66,7 @@ export default function IntegrationsPage() {
                 </div>
                 
                 <h3 className="text-lg font-semibold mb-1">{provider.name}</h3>
-                <p className="text-sm text-muted-foreground mb-6 flex-1">{provider.desc}</p>
+                <p className="text-sm text-muted-foreground mb-6 flex-1">Integration provider: {provider.provider}</p>
                 
                 <div className="flex gap-2 mt-auto">
                   {provider.status === 'Connected' ? (

@@ -7,6 +7,8 @@ import { ConnectionsModule } from '../connections/connections.module';
 import { ApprovalService } from './approval/approval.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
+import { ApprovalController } from './approval/approval.controller';
+
 @Module({
   imports: [
     RegistryModule,
@@ -15,6 +17,7 @@ import { PrismaModule } from '../prisma/prisma.module';
     ConnectionsModule,
     PrismaModule,
   ],
+  controllers: [ApprovalController],
   providers: [ToolExecutorService, ApprovalService],
   exports: [ToolExecutorService, ApprovalService],
 })

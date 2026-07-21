@@ -69,6 +69,10 @@ export class ExecutionTrackerService {
     return this.store.getRunsByConversationId(conversationId);
   }
 
+  async getRunsForWorkspace(workspaceId: string): Promise<Run[]> {
+    return this.store.getRunsByWorkspaceId(workspaceId);
+  }
+
   async getRunWithNodes(runId: string): Promise<RunWithNodes> {
     const run = await this.store.getRun(runId);
     if (!run) throw new NotFoundException(`Run ${runId} not found`);

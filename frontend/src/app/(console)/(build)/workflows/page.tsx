@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { workflowApi } from '@/services/api/workflow.service';
+import { useWorkflows } from '@/services/api/workflow';
 import { PageHeader } from '@/components/primitives/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Plus, Workflow, Search, Play } from 'lucide-react';
@@ -15,10 +14,7 @@ import { LoadingState } from '@/components/primitives/LoadingState';
 export default function WorkflowsPage() {
   const router = useRouter();
 
-  const { data: workflows, isLoading, error } = useQuery({
-    queryKey: ['workflows'],
-    queryFn: () => workflowApi.list(),
-  });
+  const { data: workflows, isLoading, error } = useWorkflows();
 
   return (
     <div className="max-w-6xl mx-auto py-8">

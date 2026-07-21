@@ -34,4 +34,10 @@ export class ConnectionsController {
     // Logic to create connection
     return { success: true };
   }
+
+  @Delete('workspaces/:workspaceId/connections/:id')
+  async deleteConnection(@Param('workspaceId') workspaceId: string, @Param('id') id: string) {
+    // Logic to delete connection
+    return { success: true };
+  }
 }

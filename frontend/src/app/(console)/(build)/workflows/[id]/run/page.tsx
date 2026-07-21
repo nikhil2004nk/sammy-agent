@@ -3,8 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { workflowApi } from '@/services/api/workflow.service';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useWorkflow, useRunWorkflow } from '@/services/api/workflow';
 import { Play, ArrowLeft, AlertCircle } from 'lucide-react';
 
 export default function RunWorkflowPage() {
@@ -17,21 +16,20 @@ export default function RunWorkflowPage() {
   const [instructions, setInstructions] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const { data: workflow, isLoading } = useQuery({
-    queryKey: ['workflow', id],
-    queryFn: () => workflowApi.get(id),
-  });
+  const { data: workflow, isLoading } = useWorkflow(id);
 
-  const runMutation = useMutation({
-    mutationFn: (payload: any) => workflowApi.run(id, payload),
-    onSuccess: (data) => {
-      // Redirect to the execution detail page
-      router.push(`/executions/${data.runId}`);
-    },
-    onError: (err: any) => {
-      setError(err.message || 'Failed to start workflow run');
-    }
-  });
+  const runMutation = useRunWorkflow();
+  
+  // Custom wrapper since the hook structure is slightly different now
+  const triggerRun = () => {
+    runMutation.mutate(
+      { id, payload: { goal, context, instructions } },
+      {
+        onSuccess: (data) => router.push(`/executions/${data.runId}`),
+        onError: (err: any) => setError(err.message || 'Failed to start workflow run'),
+      }
+    );
+  };
 
   const handleRun = () => {
     if (!goal.trim()) {
@@ -39,7 +37,7 @@ export default function RunWorkflowPage() {
       return;
     }
     setError(null);
-    runMutation.mutate({ goal, context, instructions });
+    triggerRun();
   };
 
   if (isLoading) {

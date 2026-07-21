@@ -2,8 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { executionApi } from '@/services/api/execution.service';
+import { useExecutions } from '@/services/api/execution';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { PageHeader } from '@/components/primitives/PageHeader';
@@ -16,11 +15,7 @@ import { Search, Filter, RefreshCcw, Activity } from 'lucide-react';
 export default function ExecutionsPage() {
   const router = useRouter();
 
-  const { data: executions, isLoading, error, refetch } = useQuery({
-    queryKey: ['executions'],
-    queryFn: () => executionApi.list(),
-    refetchInterval: 5000,
-  });
+  const { data: executions, isLoading, error, refetch } = useExecutions();
 
   const getStatusVariant = (status: string) => {
     switch (status) {

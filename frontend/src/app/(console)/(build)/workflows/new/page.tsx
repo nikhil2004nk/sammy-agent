@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { workflowApi } from '@/services/api/workflow.service';
+import { workflowService } from '@/services/api/workflow/service';
 import { useMutation } from '@tanstack/react-query';
 import { Check, X, AlertCircle } from 'lucide-react';
 
@@ -25,7 +25,7 @@ export default function NewWorkflowPage() {
   const [error, setError] = useState<string | null>(null);
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => workflowApi.create(data),
+    mutationFn: (data: any) => workflowService.create(data),
     onSuccess: () => {
       router.push('/workflows');
     },

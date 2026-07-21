@@ -2,8 +2,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { workflowApi } from '@/services/api/workflow.service';
+import { useWorkflow } from '@/services/api/workflow';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Play, Settings, Save, List, Code, History, Shield, PlayCircle } from 'lucide-react';
 import { PageHeader } from '@/components/primitives/PageHeader';
@@ -21,10 +20,7 @@ export default function WorkflowDetailPage() {
   const id = params.id as string;
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
-  const { data: workflow, isLoading, error } = useQuery({
-    queryKey: ['workflow', id],
-    queryFn: () => workflowApi.get(id),
-  });
+  const { data: workflow, isLoading, error } = useWorkflow(id);
 
   if (isLoading) return <LoadingState message="Loading workflow details..." />;
   if (error || !workflow) return <div className="p-8 text-danger">Failed to load workflow.</div>;
