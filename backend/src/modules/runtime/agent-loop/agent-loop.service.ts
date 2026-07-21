@@ -3,9 +3,10 @@ import { ExecutionContext } from '../../../common/execution-context';
 import { ConversationService } from '../../conversation/conversation.service';
 import { AgentStepService } from './agent-step.service';
 import { ActionExecutorService } from './action-executor.service';
-import { AssistantMessage, UserMessage } from '../../conversation/conversation.types';
+import { Message, MessagePart } from '../../conversation/conversation.types';
 import { ExecutionTrackerService } from '../../execution/execution-tracker.service';
 import * as crypto from 'crypto';
+import { MessageRole, MessagePartType, MessagePartStatus, RunStatus, ExecutionNodeType, ExecutionNodeStatus } from '@prisma/client';
 
 @Injectable()
 export class AgentLoopService {
@@ -23,17 +24,24 @@ export class AgentLoopService {
    */
   async runLoop(context: ExecutionContext, conversationId: string, userInput: string): Promise<string> {
     const run = await this.executionTracker.createRun(context.runId, conversationId, { traceId: context.traceId });
-    await this.executionTracker.updateRunStatus(run.id, 'running');
+    await this.executionTracker.updateRunStatus(run.id, RunStatus.RUNNING);
     this.logger.log(`Starting run '${run.id}' for conversation '${conversationId}'`);
 
     try {
       // 1. Append user message to conversation
-      const userMessage: UserMessage = {
+      const userMessage: Message = {
         id: crypto.randomUUID(),
-        role: 'user',
+        role: MessageRole.USER,
         createdAt: Date.now(),
-        parts: [{ type: 'text', content: userInput }]
-      } as any;
+        parts: [{ 
+          id: crypto.randomUUID(), 
+          type: MessagePartType.TEXT, 
+          status: MessagePartStatus.COMPLETE, 
+          order: 0, 
+          content: { text: userInput },
+          createdAt: Date.now() 
+        }]
+      };
       await this.conversationService.appendMessage(context.workspaceId, conversationId, userMessage);
 
       let stepCount = 0;
@@ -49,7 +57,7 @@ export class AgentLoopService {
         // 3. Evaluate state and get next action
         const reasoningNode = await this.executionTracker.createNode(
           context.runId,
-          'reasoning',
+          ExecutionNodeType.REASONING,
           `Reasoning Step ${stepCount}`,
           undefined,
           undefined,
@@ -60,40 +68,53 @@ export class AgentLoopService {
 
         await this.executionTracker.updateNodeStatus(
           reasoningNode.id,
-          'completed',
+          ExecutionNodeStatus.COMPLETED,
           action
         );
 
         // 4. Handle LLM responses (Finish or Respond)
         if (action.type === 'finish' || action.type === 'respond') {
-          const assistantMsg: AssistantMessage = {
+          const assistantMsg: Message = {
             id: crypto.randomUUID(),
-            role: 'assistant',
+            role: MessageRole.ASSISTANT,
             createdAt: Date.now(),
-            status: 'completed',
-            parts: [{ type: 'text', content: action.content }]
-          } as any;
+            parts: [{ 
+              id: crypto.randomUUID(), 
+              type: MessagePartType.TEXT, 
+              status: MessagePartStatus.COMPLETE, 
+              order: 0, 
+              content: { text: action.content },
+              createdAt: Date.now() 
+            }]
+          };
           await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
-          await this.executionTracker.updateRunStatus(run.id, 'completed', 'Completed');
+          await this.executionTracker.updateRunStatus(run.id, RunStatus.COMPLETED, 'Completed');
           return action.content;
         }
 
         // 5. Handle Cancellations
         if (action.type === 'cancel') {
           this.logger.warn(`Run ${run.id} cancelled: ${action.reason}`);
-          await this.executionTracker.updateRunStatus(run.id, 'cancelled', action.reason);
+          await this.executionTracker.updateRunStatus(run.id, RunStatus.CANCELLED, action.reason);
           return `Cancelled: ${action.reason}`;
         }
 
         // 6. Handle Tool Calls
         if (action.type === 'tool_call') {
           // Append Assistant's intent to use tools
-          const assistantMsg: AssistantMessage = {
+          const assistantMsg: Message = {
             id: crypto.randomUUID(),
-            role: 'assistant',
+            role: MessageRole.ASSISTANT,
             createdAt: Date.now(),
-            content: '',
-            toolCalls: action.toolCalls
+            parts: action.toolCalls.map((tc: any, i: number) => ({
+              id: crypto.randomUUID(),
+              type: MessagePartType.TOOL_CALL,
+              status: MessagePartStatus.COMPLETE,
+              order: i,
+              content: { name: tc.name, arguments: tc.arguments },
+              toolCallId: tc.id,
+              createdAt: Date.now()
+            }))
           };
           await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
 
@@ -111,19 +132,19 @@ export class AgentLoopService {
 
         // Future support for human_approval
         if (action.type === 'human_approval') {
-          await this.executionTracker.updateRunStatus(run.id, 'requires_action', 'HumanApprovalRequired');
+          await this.executionTracker.updateRunStatus(run.id, RunStatus.REQUIRES_ACTION, 'HumanApprovalRequired');
           return `Human approval required: ${action.context}`;
         }
       }
 
       // Max steps reached
       this.logger.warn(`Run ${run.id} reached max reasoning steps (${maxReasoningSteps})`);
-      await this.executionTracker.updateRunStatus(run.id, 'failed', 'MaxStepsReached');
+      await this.executionTracker.updateRunStatus(run.id, RunStatus.FAILED, 'MaxStepsReached');
       return "I've reached my internal reasoning limit and must stop.";
 
     } catch (error: any) {
       this.logger.error(`Run ${run.id} failed`, error);
-      await this.executionTracker.updateRunStatus(run.id, 'failed', error.message || 'Unknown error');
+      await this.executionTracker.updateRunStatus(run.id, RunStatus.FAILED, error.message || 'Unknown error');
       throw error;
     }
   }

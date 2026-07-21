@@ -10,58 +10,138 @@ generator client {
 }
 
 // -------------------------------------------------------------
-// Identity & Workspace Foundation
+// Enums
 // -------------------------------------------------------------
-
-model User {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String   @unique
-  passwordHash String
-  name         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  memberships WorkspaceMember[]
-  sessions    Session[]
-}
-
-model Session {
-  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String   @db.Uuid
-  refreshTokenHash String
-  userAgent        String?
-  ipAddress        String?
-  expiresAt        DateTime
-  lastUsedAt       DateTime @default(now())
-  createdAt        DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Workspace {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  members       WorkspaceMember[]
-  connections   Connection[]
-  agents        Agent[]
-  conversations Conversation[]
-}
 
 enum WorkspaceRole {
   OWNER
   MEMBER
 }
 
+enum ConnectionStatus {
+  ACTIVE
+  ERROR
+  PENDING
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REQUIRES_ACTION
+}
+
+enum ExecutionNodeStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ExecutionNodeType {
+  REASONING
+  TOOL
+  PLANNER
+  WORKFLOW
+  APPROVAL
+  MESSAGE
+  EVENT
+  MEMORY_READ
+  MEMORY_WRITE
+  AGENT
+  LLM
+  CONTEXT
+  SUBGRAPH
+  ROUTER
+  CONDITION
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+  TOOL
+  DEVELOPER
+}
+
+enum MessagePartType {
+  TEXT
+  IMAGE
+  CODE
+  TOOL_CALL
+  TOOL_RESULT
+  THINKING
+  FILE
+}
+
+enum MessagePartStatus {
+  STREAMING
+  COMPLETE
+  FAILED
+}
+
+// -------------------------------------------------------------
+// Identity & Workspace Foundation
+// -------------------------------------------------------------
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  emailVerified Boolean   @default(false)
+  avatar        String?
+  preferences   Json?
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  memberships WorkspaceMember[]
+  sessions    Session[]
+}
+
+model Session {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String    @db.Uuid
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+  deviceName       String?
+  expiresAt        DateTime
+  lastUsedAt       DateTime  @default(now())
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Workspace {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  settings  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  deletedBy String?   @db.Uuid
+
+  members       WorkspaceMember[]
+  connections   Connection[]
+  agents        Agent[]
+  conversations Conversation[]
+  mcpServers    MCPServer[]
+}
+
 model WorkspaceMember {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspaceId String   @db.Uuid
-  userId      String   @db.Uuid
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String        @db.Uuid
+  userId      String        @db.Uuid
   role        WorkspaceRole @default(MEMBER)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -69,180 +149,263 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
 }
 
+// -------------------------------------------------------------
+// Connections & Integrations
+// -------------------------------------------------------------
+
 model Connection {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String           @db.Uuid
+  provider    String // e.g., 'gmail', 'github'
+  status      ConnectionStatus @default(PENDING)
+  metadata    Json? // Provider metadata
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  credentials Credential[]
+}
+
+model Credential {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  connectionId          String    @db.Uuid
+  encryptedAccessToken  String?   @db.Text
+  encryptedRefreshToken String?   @db.Text
+  providerAccountId     String?
+  accountEmail          String?
+  displayName           String?
+  scopes                String[]
+  expiresAt             DateTime?
+  lastRefreshedAt       DateTime?
+  lastValidatedAt       DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  connection Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+}
+
+model MCPServer {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   workspaceId String   @db.Uuid
-  provider    String   // e.g., 'gmail', 'github'
-  status      String   // 'active', 'error', 'pending'
-  metadata    Json?
+  name        String
+  url         String
+  status      String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tools     Tool[]
+}
+
+model Tool {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mcpServerId String?  @db.Uuid
+  name        String
+  version     String?
+  provider    String?
+  schema      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mcpServer      MCPServer?      @relation(fields: [mcpServerId], references: [id], onDelete: Cascade)
+  toolExecutions ToolExecution[]
 }
 
 // -------------------------------------------------------------
-// Platform Models
+// Agents & Configurations
 // -------------------------------------------------------------
 
 model Agent {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspaceId  String?  @db.Uuid
-  name         String
-  systemPrompt String   @db.Text
-  capabilities Json     // Array of allowed tools
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId String?   @db.Uuid
+  name        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  deletedBy   String?   @db.Uuid
 
-  workspace    Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace     Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  versions      AgentVersion[]
   conversations Conversation[]
-  modelConfigs  ModelConfig[]
 }
 
-model ModelConfig {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agentId     String   @db.Uuid
-  provider    String   // e.g., 'openai', 'anthropic'
-  model       String   // e.g., 'gpt-4o'
-  temperature Float    @default(0.7)
-  maxTokens   Int      @default(2000)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+model AgentVersion {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agentId      String    @db.Uuid
+  systemPrompt String    @db.Text
+  toolConfig   Json? // Tools enabled for this version
+  variables    Json?
+  publishedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  agent       Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agent  Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  models AgentModel[]
+  runs   Run[]
 }
+
+model AgentModel {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agentVersionId String   @db.Uuid
+  provider       String // e.g., 'openai', 'anthropic'
+  model          String // e.g., 'gpt-4o'
+  settings       Json? // e.g. { temperature, maxTokens, topP, etc }
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  agentVersion AgentVersion @relation(fields: [agentVersionId], references: [id], onDelete: Cascade)
+}
+
+// -------------------------------------------------------------
+// Execution & History
+// -------------------------------------------------------------
 
 model Conversation {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  agentId     String?  @db.Uuid
-  workspaceId String?  @db.Uuid
-  title       String?
-  metadata    Json?
-  version     Int      @default(1)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  agentId         String?   @db.Uuid
+  workspaceId     String?   @db.Uuid
+  title           String?
+  summary         String?   @db.Text
+  isAutoGenerated Boolean   @default(false)
+  metadata        Json?
+  version         Int       @default(1)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  archivedAt      DateTime?
+  deletedAt       DateTime?
+  deletedBy       String?   @db.Uuid
+  lastMessageAt   DateTime?
 
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   agent     Agent?     @relation(fields: [agentId], references: [id])
   runs      Run[]
   messages  Message[]
-  events    Event[]
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, lastMessageAt])
+  @@index([lastMessageAt])
 }
 
 model Run {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversationId    String   @db.Uuid
-  status            String   // 'running', 'completed', 'failed', 'cancelled', 'requires_action'
-  terminationReason String?
-  tokenUsage        Int      @default(0)
-  toolCount         Int      @default(0)
-  reasoningCount    Int      @default(0)
-  totalTokens       Int      @default(0)
-  estimatedCost     Float    @default(0)
-  durationMs        Int?
-  metadata          Json?
-  version           Int      @default(1)
-  createdAt         DateTime @default(now())
-  endedAt           DateTime?
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId          String    @db.Uuid
+  agentVersionId          String?   @db.Uuid
+  status                  RunStatus @default(RUNNING)
+  terminationReason       String?
+  tokenUsage              Int       @default(0) // legacy, maybe remove later
+  inputTokens             Int       @default(0)
+  outputTokens            Int       @default(0)
+  cachedTokens            Int       @default(0)
+  reasoningTokens         Int       @default(0)
+  toolCount               Int       @default(0)
+  reasoningCount          Int       @default(0)
+  totalTokens             Int       @default(0)
+  currency                String?   @default("USD")
+  estimatedCostMinorUnits Int       @default(0) // e.g. cents or micro-cents
+  durationMs              Int?
+  metadata                Json?
+  version                 Int       @default(1)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  endedAt                 DateTime?
 
-  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  messages          Message[]
-  reasoningSteps    ReasoningStep[]
-  events            Event[]
-  executionNodes    ExecutionNode[]
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  agentVersion   AgentVersion?   @relation(fields: [agentVersionId], references: [id], onDelete: SetNull)
+  messages       Message[]
+  executionNodes ExecutionNode[]
+
+  @@index([conversationId, createdAt])
+  @@index([status, createdAt])
 }
 
 model ExecutionNode {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  runId           String   @db.Uuid
-  parentNodeId    String?  @db.Uuid
-  sequence        Int
-  type            String   // 'reasoning', 'tool', 'planner', 'workflow', 'approval', 'message'
-  status          String
-  title           String?
-  summary         String?  @db.Text
-  referenceType   String?
-  referenceId     String?  @db.Uuid
-  createdAt       DateTime @default(now())
-  startedAt       DateTime?
-  finishedAt      DateTime?
-  durationMs      Int?
-
-  run             Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
-  parent          ExecutionNode? @relation("ExecutionNodeHierarchy", fields: [parentNodeId], references: [id])
-  children        ExecutionNode[] @relation("ExecutionNodeHierarchy")
-}
-
-model ReasoningStep {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  runId       String   @db.Uuid
-  stepIndex   Int
-  status      String   // 'started', 'completed', 'failed'
-  createdAt   DateTime @default(now())
-  completedAt DateTime?
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId        String              @db.Uuid
+  parentNodeId String?             @db.Uuid
+  sequence     Int
+  depth        Int                 @default(0)
+  path         String?
+  type         ExecutionNodeType
+  status       ExecutionNodeStatus @default(PENDING)
+  title        String?
+  summary      String?             @db.Text
+  artifactType String? // e.g. 'TOOL_EXECUTION', 'MEMORY_READ', 'PLANNER_STEP'
+  artifactId   String?             @db.Uuid
+  completedBy  String? // e.g. 'LLM', 'Human', 'Tool'
+  metadata     Json?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  durationMs   Int?
 
   run            Run             @relation(fields: [runId], references: [id], onDelete: Cascade)
+  parent         ExecutionNode?  @relation("ExecutionNodeHierarchy", fields: [parentNodeId], references: [id])
+  children       ExecutionNode[] @relation("ExecutionNodeHierarchy")
   toolExecutions ToolExecution[]
-  events         Event[]
-}
 
-model Message {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversationId    String   @db.Uuid
-  runId             String?  @db.Uuid
-  role              String   // 'user', 'assistant', 'system', 'tool'
-  content           String?  @db.Text
-  structuredContent Json?    // To hold objects like tool results, complex schemas
-  toolCalls         Json?
-  toolCallId        String?
-  toolName          String?
-  metadata          Json?
-  createdAt         DateTime @default(now())
-
-  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  run               Run?         @relation(fields: [runId], references: [id], onDelete: SetNull)
+  @@index([runId, sequence])
+  @@index([depth])
 }
 
 model ToolExecution {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reasoningStepId String   @db.Uuid
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  executionNodeId String    @db.Uuid
+  toolId          String?   @db.Uuid
   toolName        String
+  provider        String?
+  model           String?
+  toolVersion     String?
+  mcpServer       String?
   arguments       Json
   result          Json?
   success         Boolean
-  error           String?  @db.Text
+  error           String?   @db.Text
+  retryCount      Int       @default(0)
+  inputTokens     Int       @default(0)
+  outputTokens    Int       @default(0)
+  cost            Int       @default(0)
   durationMs      Int?
-  createdAt       DateTime @default(now())
-  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  startedAt       DateTime?
+  finishedAt      DateTime?
 
-  reasoningStep   ReasoningStep @relation(fields: [reasoningStepId], references: [id], onDelete: Cascade)
+  executionNode ExecutionNode @relation(fields: [executionNodeId], references: [id], onDelete: Cascade)
+  tool          Tool?         @relation(fields: [toolId], references: [id], onDelete: SetNull)
+
+  @@index([executionNodeId])
 }
 
-enum EventType {
-  RunStarted
-  RunCompleted
-  ReasoningStarted
-  ReasoningCompleted
-  ToolStarted
-  ToolCompleted
-  ToolFailed
-  ContextBuilt
-  LLMCalled
-  LLMResponded
-  HumanApprovalRequested
-  PlannerInvoked
+model Message {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String      @db.Uuid
+  runId          String?     @db.Uuid
+  role           MessageRole
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  conversation Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  run          Run?          @relation(fields: [runId], references: [id], onDelete: SetNull)
+  parts        MessagePart[]
+
+  @@index([conversationId, createdAt])
 }
 
-model Event {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversationId  String   @db.Uuid
-  runId           String?  @db.Uuid
-  reasoningStepId String?  @db.Uuid
-  eventType       EventType
-  payload         Json?
-  createdAt       DateTime @default(now())
+model MessagePart {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  messageId  String            @db.Uuid
+  type       MessagePartType
+  status     MessagePartStatus @default(COMPLETE)
+  order      Int
+  content    Json
+  metadata   Json?
+  toolCallId String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
-  conversation    Conversation   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  run             Run?           @relation(fields: [runId], references: [id], onDelete: Cascade)
-  reasoningStep   ReasoningStep? @relation(fields: [reasoningStepId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, order])
 }

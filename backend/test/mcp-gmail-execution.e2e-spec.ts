@@ -67,9 +67,8 @@ const shouldRun = process.env.RUN_GMAIL_TESTS === 'true';
     agentId: 'agent-1',
     conversationId: 'conv-1',
     traceId: 'trace-1',
-    userId: 'user-1',
-    tenantId: 'tenant-1',
-    toolCalls: [],
+    runId: 'run-1',
+    workspaceId: 'workspace-1',
     modelConfig: { provider: 'mock', model: 'mock', temperature: 0, maxTokens: 100 },
     metadata: {}
   };

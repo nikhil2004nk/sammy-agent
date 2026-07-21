@@ -17,7 +17,7 @@ export class ExecutionTrackerService {
     const run: Run = {
       id: runId,
       conversationId,
-      status: 'queued',
+      status: RunStatus.QUEUED,
       createdAt: Date.now(),
       metadata,
       version: 1,
@@ -31,7 +31,7 @@ export class ExecutionTrackerService {
 
   async updateRunStatus(runId: string, status: RunStatus, terminationReason?: string): Promise<void> {
     const updates: Partial<Run> = { status };
-    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+    if (status === RunStatus.COMPLETED || status === RunStatus.FAILED || status === RunStatus.CANCELLED) {
       updates.endedAt = Date.now();
       const run = await this.store.getRun(runId);
       if (run) {
@@ -44,12 +44,12 @@ export class ExecutionTrackerService {
     await this.store.updateRun(runId, updates);
 
     // Emit event
-    if (status === 'completed') {
+    if (status === RunStatus.COMPLETED) {
       this.stream.publish(runId, 'run.completed', {
         durationMs: updates.durationMs,
         terminationReason,
       });
-    } else if (status === 'failed' || status === 'cancelled') {
+    } else if (status === RunStatus.FAILED || status === RunStatus.CANCELLED) {
       this.stream.publish(runId, 'run.failed', {
         durationMs: updates.durationMs,
         error: terminationReason,
@@ -89,7 +89,7 @@ export class ExecutionTrackerService {
       runId,
       parentId,
       type,
-      status: 'pending',
+      status: ExecutionNodeStatus.PENDING,
       title,
       payload,
       startedAt: Date.now(),
@@ -100,9 +100,9 @@ export class ExecutionTrackerService {
     // Update aggregate metrics on Run
     const run = await this.store.getRun(runId);
     if (run) {
-      if (type === 'tool') {
+      if (type === ExecutionNodeType.TOOL) {
         await this.store.updateRun(runId, { toolCount: (run.toolCount || 0) + 1 });
-      } else if (type === 'reasoning') {
+      } else if (type === ExecutionNodeType.REASONING) {
         await this.store.updateRun(runId, { reasoningCount: (run.reasoningCount || 0) + 1 });
       }
     }
@@ -123,7 +123,7 @@ export class ExecutionTrackerService {
 
   async updateNodeStatus(nodeId: string, status: ExecutionNodeStatus, payload?: any): Promise<void> {
     const updates: Partial<ExecutionNode> = { status };
-    if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+    if (status === ExecutionNodeStatus.COMPLETED || status === ExecutionNodeStatus.FAILED || status === ExecutionNodeStatus.CANCELLED) {
       const node = await this.store.getNode(nodeId);
       if (node) {
         updates.finishedAt = Date.now();

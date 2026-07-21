@@ -70,9 +70,9 @@ describe('MCP End-to-End Validation (e2e)', () => {
   const mockContext: ExecutionContext = {
     traceId: 'e2e-trace',
     conversationId: 'conv-1',
-    userId: 'user-1',
+    runId: 'run-1',
+    workspaceId: 'workspace-1',
     agentId: 'agent-1',
-    toolCalls: [],
     modelConfig: { provider: 'test', model: 'test', temperature: 0.7, maxTokens: 1000 },
     metadata: {}
   };

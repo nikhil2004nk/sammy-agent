@@ -1,4 +1,5 @@
-export type RunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled' | 'requires_action';
+import { RunStatus, ExecutionNodeStatus, ExecutionNodeType } from '@prisma/client';
+export { RunStatus, ExecutionNodeStatus, ExecutionNodeType };
 
 export interface Run {
   id: string;
@@ -16,9 +17,6 @@ export interface Run {
   durationMs?: number;
 }
 
-export type ExecutionNodeType = 'reasoning' | 'tool' | 'message' | 'plan';
-export type ExecutionNodeStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-
 export interface ExecutionNode {
   id: string;
   runId: string;
@@ -27,8 +25,8 @@ export interface ExecutionNode {
   status: ExecutionNodeStatus;
   title: string;
   payload?: any;
-  referenceType?: string;
-  referenceId?: string;
+  artifactType?: string;
+  artifactId?: string;
   startedAt: number;
   finishedAt?: number;
   duration?: number;

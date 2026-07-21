@@ -1,4 +1,4 @@
-import { ExecutionNodeType, ExecutionNodeStatus, RunStatus } from './execution.types';
+import { ExecutionNodeType, ExecutionNodeStatus, RunStatus } from '@prisma/client';
 
 export type ExecutionEventType =
   | 'run.started'

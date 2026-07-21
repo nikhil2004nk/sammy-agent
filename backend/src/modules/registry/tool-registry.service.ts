@@ -6,7 +6,7 @@ import { ToolMetadata } from '../mcp/types/mcp.types';
 @Injectable()
 export class ToolRegistryService {
   private readonly logger = new Logger(ToolRegistryService.name);
-  
+
   // Map of ToolName -> ToolMetadata
   // In a real system, you'd handle duplicate names across different servers.
   // We'll namespace them as 'serverId.toolName' to avoid collisions.
@@ -16,7 +16,7 @@ export class ToolRegistryService {
   handleToolDiscovered(event: ToolDiscoveredEvent) {
     const tool = event.payload.tool as ToolMetadata;
     const namespacedName = `${tool.serverId}.${tool.name}`;
-    
+
     // We only update if it's new or has a higher priority
     const existing = this.tools.get(namespacedName);
     if (!existing || existing.priority <= tool.priority) {

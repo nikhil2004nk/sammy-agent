@@ -55,10 +55,10 @@ describe('ToolExecutorService', () => {
   const mockContext: ExecutionContext = {
     traceId: 'trace-1',
     conversationId: 'conv-1',
-    userId: 'user-1',
+    runId: 'run-1',
+    workspaceId: 'workspace-1',
     agentId: 'agent-1',
-    toolCalls: [],
-    modelConfig: { provider: 'openai', model: 'gpt-4o' }
+    modelConfig: { provider: 'openai', model: 'gpt-4o', temperature: 0, maxTokens: 100 }
   };
 
   const mockTool: ToolMetadata = {

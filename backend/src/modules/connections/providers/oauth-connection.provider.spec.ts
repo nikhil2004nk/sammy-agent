@@ -36,8 +36,7 @@ describe('OAuthConnectionProvider', () => {
   });
 
   const context: ConnectionContext = {
-    tenantId: 'tenant-1',
-    userId: 'user-1',
+    workspaceId: 'tenant-1',
     serverId: 'gmail',
   };
 

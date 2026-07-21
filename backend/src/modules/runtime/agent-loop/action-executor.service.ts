@@ -2,9 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AgentAction, ToolCallAction } from './agent.types';
 import { ExecutionContext } from '../../../common/execution-context';
 import { ToolExecutorService } from '../../tools/tool-executor.service';
-import { ToolMessage } from '../../conversation/conversation.types';
+import { Message } from '../../conversation/conversation.types';
 import { ExecutionTrackerService } from '../../execution/execution-tracker.service';
 import * as crypto from 'crypto';
+import { MessageRole, MessagePartType, MessagePartStatus, ExecutionNodeType, ExecutionNodeStatus } from '@prisma/client';
 
 @Injectable()
 export class ActionExecutorService {
@@ -18,9 +19,9 @@ export class ActionExecutorService {
   /**
    * Executes a given AgentAction.
    * If it's a tool_call, it invokes the ToolExecutorService.
-   * Returns a ToolMessage to be appended to the conversation, if applicable.
+   * Returns a Message[] to be appended to the conversation, if applicable.
    */
-  async executeAction(context: ExecutionContext, action: AgentAction): Promise<ToolMessage[]> {
+  async executeAction(context: ExecutionContext, action: AgentAction): Promise<Message[]> {
     if (action.type === 'tool_call') {
       return this.executeToolCalls(context, action as ToolCallAction);
     }
@@ -30,8 +31,8 @@ export class ActionExecutorService {
     return [];
   }
 
-  private async executeToolCalls(context: ExecutionContext, action: ToolCallAction): Promise<ToolMessage[]> {
-    const results: ToolMessage[] = [];
+  private async executeToolCalls(context: ExecutionContext, action: ToolCallAction): Promise<Message[]> {
+    const results: Message[] = [];
 
     // Execute tools sequentially for now (could be parallelized)
     for (const toolCall of action.toolCalls) {
@@ -39,7 +40,7 @@ export class ActionExecutorService {
       
       const node = await this.executionTracker.createNode(
         context.runId, 
-        'tool', 
+        ExecutionNodeType.TOOL, 
         `Use Tool: ${toolCall.name}`, 
         toolCall.arguments,
         undefined,
@@ -48,20 +49,27 @@ export class ActionExecutorService {
 
       const toolResult = await this.toolExecutor.executeTool(context, toolCall.name, toolCall.arguments);
       
-      const message: ToolMessage = {
+      const contentText = toolResult.success && toolResult.data ? toolResult.data.map((d: any) => d.text).join('\n') : (toolResult.error || 'Unknown error');
+
+      const message: Message = {
         id: crypto.randomUUID(),
-        role: 'tool',
+        role: MessageRole.TOOL,
         createdAt: Date.now(),
-        toolCallId: toolCall.id,
-        toolName: toolCall.name,
-        result: toolResult.success && toolResult.data ? toolResult.data.map((d: any) => d.text).join('\n') : (toolResult.error || 'Unknown error'),
-        success: toolResult.success,
+        parts: [{
+          id: crypto.randomUUID(),
+          type: MessagePartType.TOOL_RESULT,
+          status: toolResult.success ? MessagePartStatus.COMPLETE : MessagePartStatus.FAILED,
+          order: 0,
+          content: { result: contentText },
+          toolCallId: toolCall.id,
+          createdAt: Date.now()
+        }]
       };
 
       await this.executionTracker.updateNodeStatus(
         node.id, 
-        toolResult.success ? 'completed' : 'failed', 
-        message.result
+        toolResult.success ? ExecutionNodeStatus.COMPLETED : ExecutionNodeStatus.FAILED, 
+        contentText
       );
 
       results.push(message);

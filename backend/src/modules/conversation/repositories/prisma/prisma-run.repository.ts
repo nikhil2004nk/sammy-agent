@@ -1,9 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { IRunRepository } from '../interfaces';
-import { Run, RunStatus } from '../../conversation.types';
-import { ExecutionContext } from '../../../../common/execution-context';
-// Removed EventType import
+import { Run } from '../../conversation.types';
+import { RunStatus } from '@prisma/client';
 
 @Injectable()
 export class PrismaRunRepository implements IRunRepository {
@@ -13,7 +12,7 @@ export class PrismaRunRepository implements IRunRepository {
     const run = await this.prisma.run.create({
       data: {
         conversationId,
-        status: 'running',
+        status: RunStatus.RUNNING,
         metadata: metadata || {},
       },
     });
@@ -48,69 +47,6 @@ export class PrismaRunRepository implements IRunRepository {
     });
 
     return this.mapToDomain(run);
-  }
-
-  async recordReasoningStep(
-    runId: string,
-    stepIndex: number,
-    toolExecutions: Array<{
-      toolName: string;
-      argumentsJson: any;
-      resultJson: any;
-      success: boolean;
-      durationMs?: number;
-      error?: string;
-    }>
-  ): Promise<void> {
-    // Atomic unit of work
-    await this.prisma.$transaction(async (tx) => {
-      const step = await tx.reasoningStep.create({
-        data: {
-          runId,
-          stepIndex,
-          status: 'completed',
-          completedAt: new Date(),
-        }
-      });
-
-      if (toolExecutions.length > 0) {
-        await tx.toolExecution.createMany({
-          data: toolExecutions.map(te => ({
-            reasoningStepId: step.id,
-            toolName: te.toolName,
-            arguments: te.argumentsJson,
-            result: te.resultJson,
-            success: te.success,
-            durationMs: te.durationMs,
-            error: te.error,
-            completedAt: new Date(),
-          }))
-        });
-      }
-      
-      // Bump run version for optimistic locking
-      await tx.run.update({
-        where: { id: runId },
-        data: { version: { increment: 1 } },
-      });
-    });
-  }
-
-  async recordEvent(
-    eventType: string, 
-    context: ExecutionContext,
-    reasoningStepId?: string,
-    payload?: any
-  ): Promise<void> {
-    await this.prisma.event.create({
-      data: {
-        eventType: eventType as any,
-        conversationId: context.conversationId,
-        runId: context.runId,
-        reasoningStepId,
-        payload: payload || {},
-      },
-    });
   }
 
   private mapToDomain(prismaModel: any): Run {

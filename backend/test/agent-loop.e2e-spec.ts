@@ -88,34 +88,34 @@ describe('Agent Loop (e2e)', () => {
       traceId: 'trace-loop-1',
       agentId: 'agent-1',
       conversationId: 'conv-loop-1',
-      userId: 'user-1',
-      tenantId: 'tenant-1',
-      toolCalls: [],
+      runId: 'run-1',
+      workspaceId: 'workspace-1',
       modelConfig: { provider: 'mock', model: 'mock', temperature: 0, maxTokens: 100 },
       metadata: {}
     };
 
-    const conversation = conversationService.createConversation();
+    const conversation = await conversationService.createConversation('workspace-1');
+    const conversationId = conversation.id;
     
     const finalAnswer = await agentLoop.runLoop(context, conversationId, 'Please echo "Hello Loop"');
     
     expect(finalAnswer).toBe('Final Answer: The tool echoed Hello Loop');
 
     // Verify conversation state
-    const messages = conversationService.getMessages(conversationId);
+    const messages = await conversationService.getMessages('workspace-1', conversationId);
     
     expect(messages.length).toBe(4);
-    expect(messages[0].role).toBe('user');
-    expect(messages[0].content).toBe('Please echo "Hello Loop"');
+    expect(messages[0].role).toBe('USER');
+    expect((messages[0] as any).parts[0].content.text).toBe('Please echo "Hello Loop"');
     
-    expect(messages[1].role).toBe('assistant');
-    expect((messages[1] as any).toolCalls).toBeDefined();
-    expect((messages[1] as any).toolCalls[0].name).toBe('mock.echo');
+    expect(messages[1].role).toBe('ASSISTANT');
+    expect((messages[1] as any).parts[0].type).toBe('TOOL_CALL');
+    expect((messages[1] as any).parts[0].content.name).toBe('mock.echo');
 
-    expect(messages[2].role).toBe('tool');
-    expect((messages[2] as any).toolName).toBe('mock.echo');
+    expect(messages[2].role).toBe('TOOL');
+    expect((messages[2] as any).parts[0].content.name).toBe('mock.echo');
     
-    expect(messages[3].role).toBe('assistant');
-    expect(messages[3].content).toBe('Final Answer: The tool echoed Hello Loop');
+    expect(messages[3].role).toBe('ASSISTANT');
+    expect((messages[3] as any).parts[0].content.text).toBe('Final Answer: The tool echoed Hello Loop');
   });
 });

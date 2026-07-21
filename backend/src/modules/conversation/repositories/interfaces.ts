@@ -1,5 +1,6 @@
-import { Conversation, Message, Run, RunStatus } from '../conversation.types';
+import { Conversation, Message, Run } from '../conversation.types';
 import { ExecutionContext } from '../../../common/execution-context';
+import { RunStatus } from '@prisma/client';
 
 export interface IConversationRepository {
   /**
@@ -40,30 +41,4 @@ export interface IRunRepository {
    */
   finishRun(id: string, status: RunStatus, terminationReason?: string, tokenUsage?: number, expectedVersion?: number): Promise<Run>;
 
-  /**
-   * Records a complete reasoning step atomically.
-   * This includes saving the step, the tool calls/results, and any related events.
-   */
-  recordReasoningStep(
-    runId: string,
-    stepIndex: number,
-    toolExecutions: Array<{
-      toolName: string;
-      argumentsJson: any;
-      resultJson: any;
-      success: boolean;
-      durationMs?: number;
-      error?: string;
-    }>
-  ): Promise<void>;
-
-  /**
-   * Records a domain event.
-   */
-  recordEvent(
-    eventType: string, 
-    context: ExecutionContext,
-    reasoningStepId?: string,
-    payload?: any
-  ): Promise<void>;
 }
