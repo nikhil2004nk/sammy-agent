@@ -9,7 +9,7 @@ export class ConnectionFactory {
 
   // A mapping from serverId to the expected provider scheme (this could come from config)
   private readonly serverToProviderMap: Record<string, string> = {
-    'gmail': 'oauth2',
+    'gmail': 'google',
   };
 
   registerProvider(provider: ConnectionProvider) {

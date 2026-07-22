@@ -95,8 +95,7 @@ export default function IntegrationsPage() {
                       size="sm" 
                       className="w-full gap-2"
                       onClick={() => {
-                        // Assuming workspaceId is 'default' for now, or pull from context
-                        window.location.href = `http://localhost:3001/connections/google/authorize?workspaceId=47585c98-2072-45ce-a7a9-a6e986a5c9a3&serverId=gmail-server`;
+                        window.location.href = `http://localhost:3001/connections/google/authorize?workspaceId=aef82383-4c48-45cb-94b5-c97afe82e796&serverId=gmail`;
                       }}
                     >
                       <ExternalLink className="w-3.5 h-3.5" /> Connect Gmail
