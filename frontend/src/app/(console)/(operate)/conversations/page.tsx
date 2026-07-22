@@ -13,7 +13,7 @@ export default function ConversationsPage() {
   const createConversation = useCreateConversation();
   
   const [activeId, setActiveId] = useState<string | null>(null);
-  const activeConversationId = activeId || (conversations?.[0]?.id ?? null);
+  const activeConversationId = activeId === 'new' ? null : (activeId || (conversations?.[0]?.id ?? null));
   
   const { data: messages, isLoading: isLoadingMessages } = useConversationMessages(activeConversationId || '');
   const sendMessage = useSendMessage();
@@ -40,7 +40,7 @@ export default function ConversationsPage() {
       <div className="w-64 border-r border-border bg-surface flex flex-col shrink-0">
         <div className="p-4 border-b border-border flex justify-between items-center">
           <h2 className="font-medium">Chats</h2>
-          <Button size="icon" variant="ghost" onClick={() => setActiveId(null)}>
+          <Button size="icon" variant="ghost" onClick={() => setActiveId('new')}>
             <MessageSquare className="w-4 h-4" />
           </Button>
         </div>

@@ -112,9 +112,14 @@ export class McpAdapterService implements IMcpAdapter {
           : toolMetadata.name;
       }
 
+      const toolArgs = { ...args };
+      if (resolvedConnection?.authentication?.environment) {
+        toolArgs._mcp_auth = resolvedConnection.authentication.environment;
+      }
+
       const result = await this.client.callTool({
         name: actualToolName,
-        arguments: args,
+        arguments: toolArgs,
       });
       
       const duration = Date.now() - startTime;

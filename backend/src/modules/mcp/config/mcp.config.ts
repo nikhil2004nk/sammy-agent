@@ -40,7 +40,7 @@ export default registerAs('mcp', (): McpConfig => ({
       }
     },
     'mock-gmail': {
-      enabled: true,
+      enabled: false,
       transport: 'stdio',
       startup: 'async',
       command: 'node',

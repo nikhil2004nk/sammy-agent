@@ -106,14 +106,26 @@ class GmailMcpServer {
     });
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      if (!this.gmail) {
-        throw new McpError(ErrorCode.InvalidRequest, 'Gmail client is not authenticated (missing GOOGLE_REFRESH_TOKEN).');
-      }
-
       try {
+        const args = request.params.arguments as any;
+        const mcpAuth = args?._mcp_auth;
+        
+        let activeGmail = this.gmail;
+        if (mcpAuth && mcpAuth.GOOGLE_REFRESH_TOKEN) {
+          const client = new google.auth.OAuth2(
+            mcpAuth.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+            mcpAuth.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET
+          );
+          client.setCredentials({ refresh_token: mcpAuth.GOOGLE_REFRESH_TOKEN });
+          activeGmail = google.gmail({ version: 'v1', auth: client });
+        }
+
+        if (!activeGmail) {
+          throw new McpError(ErrorCode.InvalidRequest, 'Gmail client is not authenticated (missing GOOGLE_REFRESH_TOKEN).');
+        }
+
         if (request.params.name === 'gmail.list_messages' || request.params.name === 'gmail.search_messages') {
-          const args = request.params.arguments as any;
-          const response = await this.gmail.users.messages.list({
+          const response = await activeGmail.users.messages.list({
             userId: 'me',
             maxResults: args?.maxResults || 10,
             q: args?.q,
@@ -125,10 +137,9 @@ class GmailMcpServer {
         }
 
         if (request.params.name === 'gmail.get_message') {
-          const args = request.params.arguments as any;
           if (!args?.id) throw new McpError(ErrorCode.InvalidParams, 'Message ID is required');
           
-          const response = await this.gmail.users.messages.get({
+          const response = await activeGmail.users.messages.get({
             userId: 'me',
             id: args.id,
             format: 'full',
@@ -140,7 +151,6 @@ class GmailMcpServer {
         }
 
         if (request.params.name === 'gmail.create_draft') {
-          const args = request.params.arguments as any;
           if (!args?.to || !args?.subject || !args?.body) {
             throw new McpError(ErrorCode.InvalidParams, 'to, subject, and body are required');
           }
@@ -155,7 +165,7 @@ class GmailMcpServer {
           const email = emailLines.join('\n');
           const encodedEmail = Buffer.from(email).toString('base64url');
 
-          const response = await this.gmail.users.drafts.create({
+          const response = await activeGmail.users.drafts.create({
             userId: 'me',
             requestBody: {
               message: {

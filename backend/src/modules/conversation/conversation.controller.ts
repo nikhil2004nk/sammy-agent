@@ -84,7 +84,7 @@ export class ConversationController {
         provider: 'openai',
         model: 'openai/gpt-4o', // OpenRouter compatible model string
         temperature: 0.7,
-        maxTokens: 2000
+        maxTokens: 1000
       },
     };
 

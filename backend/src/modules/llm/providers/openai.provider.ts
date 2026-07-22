@@ -130,11 +130,21 @@ Finish Reason  ${finishReason || 'unknown'}
 
         return {
           content: fullContent,
-          toolCalls: toolCalls.length > 0 ? toolCalls.map(tc => ({
-            id: tc.id,
-            name: tc.function.name,
-            arguments: tc.function.arguments
-          })) : undefined,
+          toolCalls: toolCalls.length > 0 ? toolCalls.map(tc => {
+            let parsedArgs = {};
+            try {
+              if (tc.function.arguments) {
+                parsedArgs = JSON.parse(tc.function.arguments);
+              }
+            } catch (e) {
+              this.logger.error(`Failed to parse tool arguments for ${tc.function.name}: ${tc.function.arguments}`);
+            }
+            return {
+              id: tc.id,
+              name: tc.function.name,
+              arguments: parsedArgs
+            };
+          }) : undefined,
           tokensUsed: usage.prompt_tokens + usage.completion_tokens,
           usage: {
             prompt: usage.prompt_tokens,
@@ -168,8 +178,30 @@ Output Tokens  ${response.usage?.completion_tokens || 0}
 Finish Reason  ${response.choices[0]?.finish_reason || 'unknown'}
         `);
 
+        let parsedToolCalls: any[] | undefined = undefined;
+        const msgToolCalls = response.choices[0].message.tool_calls;
+        if (msgToolCalls && msgToolCalls.length > 0) {
+          parsedToolCalls = msgToolCalls.map(tc => {
+            let parsedArgs = {};
+            const func = (tc as any).function;
+            try {
+              if (func && func.arguments) {
+                parsedArgs = JSON.parse(func.arguments);
+              }
+            } catch (e) {
+              this.logger.error(`Failed to parse tool arguments for ${func?.name}: ${func?.arguments}`);
+            }
+            return {
+              id: tc.id,
+              name: func?.name,
+              arguments: parsedArgs
+            };
+          });
+        }
+
         return {
           content: response.choices[0].message.content || '',
+          toolCalls: parsedToolCalls,
           tokensUsed: response.usage?.total_tokens || 0,
           usage: {
             prompt: response.usage?.prompt_tokens || 0,
