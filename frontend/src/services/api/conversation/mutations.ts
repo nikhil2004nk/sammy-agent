@@ -70,6 +70,7 @@ export function useSendMessage() {
       // Invalidate to make sure we have the final truth from the DB, but SSE handles the streaming in between!
       queryClient.invalidateQueries({ queryKey: queryKeys.conversationMessages(id) });
       queryClient.invalidateQueries({ queryKey: queryKeys.conversations(workspaceId) });
+      queryClient.invalidateQueries({ queryKey: ['runs', id] });
     },
   });
 }
