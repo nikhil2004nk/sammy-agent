@@ -12,7 +12,7 @@ export const llmConfig = registerAs('llm', () => {
     },
     openrouter: {
       apiKey: process.env.OPENROUTER_API_KEY,
-      model: process.env.OPENAI_MODEL || 'openai/gpt-4o',
+      model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o',
       baseUrl: 'https://openrouter.ai/api/v1',
     },
     ollama: {

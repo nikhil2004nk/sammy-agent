@@ -19,6 +19,7 @@ import type {
 } from './types';
 import { conversationKeys } from '../conversation/api';
 import type { Message } from '@/services/api/conversation/types';
+import { queryKeys } from '@/services/api/queryKeys';
 
 // ---- Backend DTO shapes ----
 
@@ -232,7 +233,7 @@ export function useLiveRun(conversationId: string | null): Run | null {
               const p = parsed.payload as MessageDeltaPayload;
               
               // 1. Update the chat messages directly
-              queryClient.setQueryData<Message[]>(conversationKeys.messages(latestRun.conversationId), (oldMessages) => {
+              queryClient.setQueryData<Message[]>(queryKeys.conversationMessages(latestRun.conversationId), (oldMessages) => {
                 if (!oldMessages) return oldMessages;
                 return oldMessages.map((msg, idx, arr) => {
                   // Find the last assistant message (which should be the optimistic one)
@@ -252,6 +253,7 @@ export function useLiveRun(conversationId: string | null): Run | null {
                 nodes: oldData.nodes.map((n, idx, arr) => {
                   const isTarget = p.nodeId ? n.id === p.nodeId : (n.type === 'reasoning' && idx === arr.findLastIndex(x => x.type === 'reasoning'));
                   if (isTarget) {
+                     // n.content is not part of Message, this is for nodes
                     return { ...n, content: (n.content || '') + p.delta };
                   }
                   return n;
@@ -262,12 +264,12 @@ export function useLiveRun(conversationId: string | null): Run | null {
               const p = parsed.payload as MessageCompletedPayload;
               
               // 1. Update the chat messages directly
-              queryClient.setQueryData<Message[]>(conversationKeys.messages(latestRun.conversationId), (oldMessages) => {
+              queryClient.setQueryData<Message[]>(queryKeys.conversationMessages(latestRun.conversationId), (oldMessages) => {
                 if (!oldMessages) return oldMessages;
                 return oldMessages.map((msg, idx, arr) => {
                   const isTarget = msg.role === 'assistant' && idx === arr.findLastIndex(x => x.role === 'assistant');
                   if (isTarget) {
-                    return { ...msg, status: 'completed', parts: [{ type: 'text', content: p.content }] };
+                    return { ...msg, status: 'completed', content: p.content } as any;
                   }
                   return msg;
                 });

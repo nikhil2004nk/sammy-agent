@@ -61,6 +61,8 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
       const startTime = Date.now();
       const startDate = new Date();
 
+      const isLocal = this.openai.baseURL && this.openai.baseURL.includes('localhost');
+      
       const openAiTools = tools && tools.length > 0 ? tools.map(t => ({
         type: 'function' as const,
         function: {
@@ -70,6 +72,8 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
         }
       })) : undefined;
 
+      const finalTools = isLocal ? undefined : openAiTools;
+
       if (onToken) {
         const stream = await this.openai.chat.completions.create({
           model: this.model,
@@ -78,7 +82,7 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
           max_tokens: maxTokens,
           stream: true,
           stream_options: { include_usage: true },
-          tools: openAiTools,
+          tools: finalTools,
         });
 
         let fullContent = '';
@@ -160,7 +164,7 @@ Finish Reason  ${finishReason || 'unknown'}
           messages: openAiMessages,
           temperature,
           max_tokens: maxTokens,
-          tools: openAiTools,
+          tools: finalTools,
         });
 
         const endTime = Date.now();
