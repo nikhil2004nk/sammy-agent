@@ -58,24 +58,24 @@
 }
 
 :root {
-  /* Dark mode as default root */
-  --background: 9 9 11;
-  --foreground: 250 250 250;
-  --surface: 24 24 27;
-  --card: 39 39 42;
+  /* Stunning Deep Violet/Midnight Dark Mode */
+  --background: 8 5 22;
+  --foreground: 248 248 252;
+  --surface: 18 14 38;
+  --card: 26 22 52;
 
-  --primary: 59 130 246;
+  --primary: 139 92 246; /* Violet 500 */
   --primary-foreground: 255 255 255;
 
-  --success: 34 197 94;
+  --success: 16 185 129;
   --warning: 245 158 11;
   --danger: 239 68 68;
 
-  --muted-foreground: 161 161 170;
-  --border: 39 39 42;
-  --input: 39 39 42;
+  --muted-foreground: 148 148 165;
+  --border: 35 30 65;
+  --input: 26 22 52;
   
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 }
 
 @layer base {
@@ -87,5 +87,25 @@
   }
   html {
     @apply font-sans;
+  }
+  
+  /* Custom Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(18, 10, 46, 0.5); /* matches our dark violet background */
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.4); /* matches our primary violet */
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.7);
   }
 }

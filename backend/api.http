@@ -33,7 +33,7 @@ POST {{baseUrl}}/conversations/{{conversationId}}/messages
 Content-Type: application/json
 
 {
-  "content": "Hello Jarvis, can you check my recent emails?"
+  "content": "Hello Sammy, can you check my recent emails?"
 }
 
 ###

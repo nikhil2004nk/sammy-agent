@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADR)
 
-This directory contains Architecture Decision Records (ADRs) for the Jarvis Agent Platform.
+This directory contains Architecture Decision Records (ADRs) for the Sammy Agent Platform.
 
 An ADR is a short text document that captures an important architectural decision made along with its context and consequences.
 

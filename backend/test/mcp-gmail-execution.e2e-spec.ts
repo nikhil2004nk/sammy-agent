@@ -86,7 +86,7 @@ const shouldRun = process.env.RUN_GMAIL_TESTS === 'true';
   it('should create a draft safely', async () => {
     const result = await toolExecutor.executeTool(mockContext, 'gmail_real.gmail.create_draft', {
       to: 'test@example.com',
-      subject: 'Hello from Jarvis Tests',
+      subject: 'Hello from Sammy Tests',
       body: 'This is an automated test draft.'
     });
     

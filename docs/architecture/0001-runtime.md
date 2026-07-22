@@ -6,7 +6,7 @@ Date: 2026-07-20
 Accepted
 
 ## Context
-As an AI Agent platform, Jarvis needs to handle requests gracefully. Early iterations embedded the reasoning loop (ReAct) directly into the Execution Service. As we plan to support background jobs, distributed workers, scheduling, and multi-agent coordination, intertwining lifecycle management with reasoning logic creates a monolithic bottleneck.
+As an AI Agent platform, Sammy needs to handle requests gracefully. Early iterations embedded the reasoning loop (ReAct) directly into the Execution Service. As we plan to support background jobs, distributed workers, scheduling, and multi-agent coordination, intertwining lifecycle management with reasoning logic creates a monolithic bottleneck.
 
 ## Decision
 We abstract the execution lifecycle from the autonomous reasoning loop. 

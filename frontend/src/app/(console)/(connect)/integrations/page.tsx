@@ -27,8 +27,8 @@ export default function IntegrationsPage() {
   return (
     <div className="max-w-5xl mx-auto py-8">
       <PageHeader 
-        title="Integrations" 
-        description="Connect Jarvis to your favorite tools, services, and local data."
+        title="Integrations Hub" 
+        description="Connect Sammy to your favorite tools, services, and local data."
       >
         <Button size="sm" className="gap-2">
           <Plus className="w-4 h-4" /> Add Integration
