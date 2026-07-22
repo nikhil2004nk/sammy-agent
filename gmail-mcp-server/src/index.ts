@@ -100,6 +100,19 @@ class GmailMcpServer {
               },
               required: ['to', 'subject', 'body'],
             },
+          },
+          {
+            name: 'gmail.send_message',
+            description: 'Send an email directly.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                to: { type: 'string' },
+                subject: { type: 'string' },
+                body: { type: 'string' },
+              },
+              required: ['to', 'subject', 'body'],
+            },
           }
         ],
       };
@@ -131,8 +144,35 @@ class GmailMcpServer {
             q: args?.q,
           });
 
+          const messages = response.data.messages || [];
+          const detailedMessages = await Promise.all(
+            messages.map(async (msg) => {
+              try {
+                const msgDetail = await activeGmail.users.messages.get({
+                  userId: 'me',
+                  id: msg.id!,
+                  format: 'metadata',
+                  metadataHeaders: ['Subject', 'From', 'Date'],
+                });
+                const headers = msgDetail.data.payload?.headers || [];
+                const subject = headers.find((h) => h.name?.toLowerCase() === 'subject')?.value || 'No Subject';
+                const from = headers.find((h) => h.name?.toLowerCase() === 'from')?.value || 'Unknown';
+                const date = headers.find((h) => h.name?.toLowerCase() === 'date')?.value || '';
+                return {
+                  id: msg.id,
+                  from,
+                  subject,
+                  date,
+                  snippet: msgDetail.data.snippet,
+                };
+              } catch (e) {
+                return { id: msg.id, error: 'Failed to fetch details' };
+              }
+            })
+          );
+
           return {
-            content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }],
+            content: [{ type: 'text', text: JSON.stringify(detailedMessages, null, 2) }],
           };
         }
 
@@ -171,6 +211,33 @@ class GmailMcpServer {
               message: {
                 raw: encodedEmail,
               },
+            },
+          });
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }],
+          };
+        }
+
+        if (request.params.name === 'gmail.send_message') {
+          if (!args?.to || !args?.subject || !args?.body) {
+            throw new McpError(ErrorCode.InvalidParams, 'to, subject, and body are required');
+          }
+
+          // RFC 2822 format
+          const emailLines = [
+            `To: ${args.to}`,
+            `Subject: ${args.subject}`,
+            '',
+            args.body,
+          ];
+          const email = emailLines.join('\n');
+          const encodedEmail = Buffer.from(email).toString('base64url');
+
+          const response = await activeGmail.users.messages.send({
+            userId: 'me',
+            requestBody: {
+              raw: encodedEmail,
             },
           });
 

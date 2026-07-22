@@ -84,7 +84,7 @@ export class ConversationController {
         provider: 'openai',
         model: 'openrouter/free', // Using a free model to avoid credit limits
         temperature: 0.7,
-        maxTokens: 500
+        maxTokens: 200
       },
     };
 
