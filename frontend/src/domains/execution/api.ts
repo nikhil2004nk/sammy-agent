@@ -184,26 +184,26 @@ export function useLiveRun(conversationId: string | null): Run | null {
         const parsed: ExecutionEvent = JSON.parse(event.data);
         
         queryClient.setQueryData<Run>(['run', latestRun.id], (oldData) => {
-          if (!oldData) return oldData;
+          const currentState = oldData || { ...latestRun, nodes: [] };
 
           switch (parsed.type) {
             case 'run.updated': {
               const p = parsed.payload as RunUpdatedPayload;
-              return { ...oldData, status: p.status, totalTools: p.toolCount ?? oldData.totalTools };
+              return { ...currentState, status: p.status, totalTools: p.toolCount ?? currentState.totalTools };
             }
             case 'run.completed': {
               const p = parsed.payload as RunCompletedPayload;
-              return { ...oldData, status: 'Completed', durationMs: p.durationMs ?? oldData.durationMs };
+              return { ...currentState, status: 'Completed', durationMs: p.durationMs ?? currentState.durationMs };
             }
             case 'run.failed': {
               const p = parsed.payload as RunFailedPayload;
-              return { ...oldData, status: 'Failed', durationMs: p.durationMs ?? oldData.durationMs };
+              return { ...currentState, status: 'Failed', durationMs: p.durationMs ?? currentState.durationMs };
             }
             case 'node.created': {
               const p = parsed.payload as NodeCreatedPayload;
               const newNode = {
                 id: p.id,
-                runId: oldData.id,
+                runId: currentState.id,
                 parentId: p.parentId,
                 type: p.type,
                 status: p.status,
@@ -213,13 +213,13 @@ export function useLiveRun(conversationId: string | null): Run | null {
                 arguments: p.type === 'tool' ? p.payload : undefined,
                 startedAt: new Date(p.startedAt).toISOString(),
               };
-              return { ...oldData, nodes: [...oldData.nodes, newNode] };
+              return { ...currentState, nodes: [...currentState.nodes, newNode] };
             }
             case 'node.updated': {
               const p = parsed.payload as NodeUpdatedPayload;
               return {
-                ...oldData,
-                nodes: oldData.nodes.map(n => 
+                ...currentState,
+                nodes: currentState.nodes.map(n => 
                   n.id === p.id ? { 
                     ...n, 
                     status: p.status, 
@@ -249,8 +249,8 @@ export function useLiveRun(conversationId: string | null): Run | null {
 
               // 2. Update the run nodes
               return {
-                ...oldData,
-                nodes: oldData.nodes.map((n, idx, arr) => {
+                ...currentState,
+                nodes: currentState.nodes.map((n, idx, arr) => {
                   const isTarget = p.nodeId ? n.id === p.nodeId : (n.type === 'reasoning' && idx === arr.findLastIndex(x => x.type === 'reasoning'));
                   if (isTarget) {
                      // n.content is not part of Message, this is for nodes
@@ -277,8 +277,8 @@ export function useLiveRun(conversationId: string | null): Run | null {
 
               // 2. Update the run nodes
               return {
-                ...oldData,
-                nodes: oldData.nodes.map((n, idx, arr) => {
+                ...currentState,
+                nodes: currentState.nodes.map((n, idx, arr) => {
                   const isTarget = p.nodeId ? n.id === p.nodeId : (n.type === 'reasoning' && idx === arr.findLastIndex(x => x.type === 'reasoning'));
                   if (isTarget) {
                     return { ...n, content: p.content };
@@ -288,7 +288,7 @@ export function useLiveRun(conversationId: string | null): Run | null {
               };
             }
             default:
-              return oldData;
+              return currentState;
           }
         });
       } catch (e) {

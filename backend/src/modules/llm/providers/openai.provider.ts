@@ -102,9 +102,15 @@ export class OpenAiProvider implements ILLMProvider, OnModuleInit {
               const index = tc.index;
               if (!toolCalls[index]) {
                 toolCalls[index] = { id: tc.id, type: tc.type, function: { name: tc.function?.name || '', arguments: '' } };
+                // Also emit the tool name when it starts
+                if (tc.function?.name) {
+                  onToken(`\n\n[Tool Call: ${tc.function.name}]\n`);
+                }
               }
               if (tc.function?.arguments) {
                 toolCalls[index].function.arguments += tc.function.arguments;
+                // Emit the arguments delta to the UI so it streams live
+                onToken(tc.function.arguments);
               }
             }
           }

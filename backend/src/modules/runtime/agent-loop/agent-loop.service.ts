@@ -61,6 +61,16 @@ export class AgentLoopService {
 
       // 2. Retrieve memory context and attach to ExecutionContext for AgentStepService (system prompt injection)
       this.logger.log(`[Run ${run.id}] [Step 3] Retrieving memory context for workspace '${context.workspaceId}'`);
+      
+      const memoryNode = await this.executionTracker.createNode(
+        context.runId,
+        ExecutionNodeType.EVENT,
+        `Context & Memory Setup`,
+        undefined,
+        undefined,
+        context.agentId
+      );
+      
       const memoryContext = await this.memoryService.buildContext(
         context.workspaceId,
         context.userId,
@@ -72,6 +82,8 @@ export class AgentLoopService {
         context = { ...context, memoryContext };
         memoryItemsCount = memoryContext.split('\n').filter(l => l.trim().startsWith('-')).length;
       }
+      
+      await this.executionTracker.updateNodeStatus(memoryNode.id, ExecutionNodeStatus.COMPLETED, { summary: `Loaded ${memoryItemsCount} context items` });
 
       let stepCount = 0;
       const maxReasoningSteps = 10;
@@ -113,6 +125,15 @@ Last Updated   ${lastUpdated}
 
         // 4. Finish / Respond
         if (action.type === 'finish' || action.type === 'respond') {
+          const respondNode = await this.executionTracker.createNode(
+            context.runId,
+            ExecutionNodeType.EVENT,
+            `Decision: Final Response`,
+            { summary: `Agent decided to respond to the user and end the turn.` },
+            undefined,
+            context.agentId
+          );
+          await this.executionTracker.updateNodeStatus(respondNode.id, ExecutionNodeStatus.COMPLETED);
           if ((action as any).usage) {
              totalInputTokens += (action as any).usage.prompt || 0;
              totalOutputTokens += (action as any).usage.completion || 0;
@@ -199,6 +220,16 @@ Cost                 $0.0000
              modelName = (action as any).usage.model || modelName;
           }
 
+          const decisionNode = await this.executionTracker.createNode(
+            context.runId,
+            ExecutionNodeType.EVENT,
+            `Decision: Execute Tools`,
+            { summary: `Agent decided to execute ${action.toolCalls.length} tool(s).` },
+            undefined,
+            context.agentId
+          );
+          await this.executionTracker.updateNodeStatus(decisionNode.id, ExecutionNodeStatus.COMPLETED);
+
           this.logger.log(`[Run ${run.id}] [Step 7.${stepCount}] LLM invoked ${action.toolCalls.length} tool(s). Appending tool calls to conversation.`);
           const assistantMsg: Message = {
             id: crypto.randomUUID(),
@@ -235,6 +266,16 @@ Cost                 $0.0000
         }
       }
 
+      const errorNode = await this.executionTracker.createNode(
+        context.runId,
+        ExecutionNodeType.EVENT,
+        `Loop Terminated`,
+        { summary: `Max reasoning steps reached (${maxReasoningSteps}).` },
+        undefined,
+        context.agentId
+      );
+      await this.executionTracker.updateNodeStatus(errorNode.id, ExecutionNodeStatus.FAILED);
+      
       this.logger.warn(`Run ${run.id} reached max reasoning steps (${maxReasoningSteps})`);
       await this.executionTracker.updateRunStatus(run.id, RunStatus.FAILED, 'MaxStepsReached');
       return "I've reached my internal reasoning limit and must stop.";
