@@ -51,7 +51,7 @@ Estimated Tokens       ~${estimatedTokens}
     const response = await provider.generateResponse(
       llmMessages, 
       context.modelConfig?.temperature || 0, 
-      context.modelConfig?.maxTokens || 1000,
+      context.modelConfig?.maxTokens || undefined,
       llmTools,
       (delta) => {
         this.stream.publish(context.runId, 'message.delta', {

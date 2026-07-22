@@ -9,10 +9,12 @@ import { AppCard } from '@/components/primitives/AppCard';
 import { StatusBadge } from '@/components/primitives/StatusBadge';
 import { Toolbar } from '@/components/primitives/Toolbar';
 import { useConnections, useDeleteConnection } from '@/services/api/connection';
+import { useAuthStore } from '@/store/auth.store';
 
 export default function IntegrationsPage() {
   const { data: connections, isLoading } = useConnections();
   const deleteMutation = useDeleteConnection();
+  const activeWorkspaceId = useAuthStore(state => state.activeWorkspaceId);
 
   // For UI consistency, we still hardcode MCP servers since they are local and not in the DB yet,
   // but we map Cloud Providers from the API.
@@ -95,7 +97,7 @@ export default function IntegrationsPage() {
                       size="sm" 
                       className="w-full gap-2"
                       onClick={() => {
-                        window.location.href = `http://localhost:3001/connections/google/authorize?workspaceId=aef82383-4c48-45cb-94b5-c97afe82e796&serverId=gmail`;
+                        window.location.href = `http://localhost:3001/connections/google/authorize?workspaceId=${activeWorkspaceId}&serverId=gmail`;
                       }}
                     >
                       <ExternalLink className="w-3.5 h-3.5" /> Connect Gmail

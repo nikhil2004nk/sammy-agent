@@ -26,7 +26,7 @@ export interface ExecutionContext {
     provider: string;
     model: string;
     temperature: number;
-    maxTokens: number;
+    maxTokens?: number;
   };
 }
 

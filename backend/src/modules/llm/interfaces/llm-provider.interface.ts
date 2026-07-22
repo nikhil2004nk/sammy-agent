@@ -29,7 +29,7 @@ export interface ILLMProvider {
   generateResponse(
     messages: ILLMMessage[], 
     temperature: number, 
-    maxTokens: number, 
+    maxTokens?: number, 
     tools?: ILLMTool[],
     onToken?: (token: string) => void
   ): Promise<ILLMResponse>;
