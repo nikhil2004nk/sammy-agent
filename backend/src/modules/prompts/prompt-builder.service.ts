@@ -36,6 +36,11 @@ export class PromptBuilderService {
     const systemMessage: ILLMMessage = { role: 'system', content: SYSTEM_PROMPT };
     const llmMessages: ILLMMessage[] = [systemMessage, ...nonSystemMessages.map(msg => this.mapMessage(msg))];
     const tools: ILLMTool[] = capabilities.map(cap => this.mapCapabilityToTool(cap));
+    const toolsJsonStr = JSON.stringify(tools);
+    console.log(`[PromptBuilder] Total tools size: ${toolsJsonStr.length} chars. Tool count: ${tools.length}`);
+    if (toolsJsonStr.length > 50000) {
+      console.log(`[PromptBuilder] Tools are massive! First tool: ${tools[0]?.name}`);
+    }
     return { messages: llmMessages, tools };
   }
 

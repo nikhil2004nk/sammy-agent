@@ -82,9 +82,9 @@ export class ConversationController {
       userId: req.user?.userId,
       modelConfig: {
         provider: 'openai',
-        model: 'openai/gpt-4o', // OpenRouter compatible model string
+        model: 'openrouter/auto', // Try auto routing
         temperature: 0.7,
-        maxTokens: 800
+        maxTokens: 500
       },
     };
 
