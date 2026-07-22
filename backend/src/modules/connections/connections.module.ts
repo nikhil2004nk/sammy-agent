@@ -2,7 +2,7 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ConnectionFactory } from './factories/connection.factory';
 import { OAuthConnectionProvider } from './providers/oauth-connection.provider';
-import { MemoryCredentialRepository } from './repositories/memory-credential.repository';
+import { PrismaCredentialRepository } from './repositories/prisma-credential.repository';
 import { NoOpEncryptionService } from './services/noop-encryption.service';
 import { EncryptionService } from './interfaces/encryption-service.interface';
 import { CredentialRepository } from './interfaces/credential-repository.interface';
@@ -13,9 +13,10 @@ import { OauthController } from './oauth.controller';
 import { McpModule } from '../mcp/mcp.module';
 import { ProviderAdapterRegistry } from '../mcp/provider-adapter.registry';
 import { GoogleMcpAdapter } from '../mcp/adapter/google-mcp.adapter';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [ConfigModule, McpModule],
+  imports: [ConfigModule, McpModule, PrismaModule],
   controllers: [ConnectionsController, OauthController],
   providers: [
     {
@@ -24,7 +25,7 @@ import { GoogleMcpAdapter } from '../mcp/adapter/google-mcp.adapter';
     },
     {
       provide: CredentialRepository,
-      useClass: MemoryCredentialRepository
+      useClass: PrismaCredentialRepository
     },
     OAuthConnectionProvider,
     GoogleConnectionProvider,

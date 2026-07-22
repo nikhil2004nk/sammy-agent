@@ -54,23 +54,34 @@ export class PromptBuilderService {
         return { role: 'user', content: textContent };
       case 'system':
         return { role: 'system', content: textContent };
-      case 'assistant':
+      case 'assistant': {
+        const toolCalls = msg.parts
+          ?.filter((p: any) => p.type === 'tool_call' || p.type === 'TOOL_CALL')
+          .map((p: any) => ({
+            id: p.toolCallId,
+            name: p.content?.name,
+            arguments: typeof p.content?.arguments === 'string' ? p.content.arguments : JSON.stringify(p.content?.arguments || {})
+          }));
+        
         return {
           role: 'assistant',
           content: textContent,
-          toolCalls: msg.toolCalls?.map((tc: any) => ({
-            id: tc.id,
-            name: tc.name,
-            arguments: tc.arguments
-          }))
+          toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined
         };
-      case 'tool':
+      }
+      case 'tool': {
+        const toolPart = msg.parts?.find((p: any) => p.type === 'tool_result' || p.type === 'TOOL_RESULT');
+        const result = toolPart?.content?.result || msg.result || '';
+        const toolCallId = toolPart?.toolCallId || msg.toolCallId || '';
+        const toolName = toolPart?.content?.name || msg.toolName || '';
+        
         return {
           role: 'tool',
-          content: typeof msg.result === 'string' ? msg.result : JSON.stringify(msg.result),
-          toolCallId: msg.toolCallId,
-          name: msg.toolName
+          content: typeof result === 'string' ? result : JSON.stringify(result),
+          toolCallId,
+          name: toolName
         };
+      }
       default:
         throw new Error(`Unsupported message role: ${msg.role}`);
     }

@@ -69,30 +69,25 @@ export class OauthController {
     }
 
     try {
-      // Exchange code for tokens and save to DB via provider
-      await (provider as any).exchangeCodeForTokens(
-        { workspaceId: state.workspaceId, serverId: state.serverId },
-        code
-      );
-      
-      // Upsert a record in the actual Prisma Connection table so the UI sees it!
-      const existingConnection = await this.prisma.connection.findFirst({
+      // Upsert a record in the actual Prisma Connection table FIRST!
+      // This is required because saveCredential expects a Connection record to link the Credential to.
+      let connection = await this.prisma.connection.findFirst({
         where: {
           workspaceId: state.workspaceId,
           provider: 'google'
         }
       });
       
-      if (existingConnection) {
-        await this.prisma.connection.update({
-          where: { id: existingConnection.id },
+      if (connection) {
+        connection = await this.prisma.connection.update({
+          where: { id: connection.id },
           data: {
             status: ConnectionStatus.ACTIVE,
             updatedAt: new Date(),
           }
         });
       } else {
-        await this.prisma.connection.create({
+        connection = await this.prisma.connection.create({
           data: {
             workspaceId: state.workspaceId,
             provider: 'google',
@@ -100,6 +95,12 @@ export class OauthController {
           }
         });
       }
+
+      // Exchange code for tokens and save to DB via provider
+      await (provider as any).exchangeCodeForTokens(
+        { workspaceId: state.workspaceId, serverId: state.serverId },
+        code
+      );
       
       // Redirect back to frontend integrations page on success
       return res.redirect('http://localhost:3000/integrations');

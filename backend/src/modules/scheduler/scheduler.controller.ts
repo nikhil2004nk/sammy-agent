@@ -29,7 +29,7 @@ export class SchedulerController {
     if (body.status === 'DISABLE') {
       await this.schedulerService.disable(jobId);
     } else if (body.status === 'ENABLE') {
-      // Logic to enable would go here
+      await this.schedulerService.enable(jobId);
     }
     return { success: true, message: 'Job updated' };
   }

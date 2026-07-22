@@ -56,6 +56,27 @@ export class SchedulerService {
     this.logger.log(`Disabled scheduled job '${jobId}'`);
   }
 
+  async enable(jobId: string): Promise<void> {
+    const job = await this.prisma.scheduledJob.update({ where: { id: jobId }, data: { enabled: true } });
+    try {
+      // If it exists in registry already, do nothing or delete it first
+      try {
+        this.schedulerRegistry.deleteCronJob(jobId);
+      } catch {}
+      this.registerCronJob(job.id, {
+        workspaceId: job.workspaceId,
+        agentId: job.agentId || undefined,
+        name: job.name,
+        cronExpr: job.cronExpr,
+        goal: job.goal,
+        enabled: true
+      });
+    } catch (e) {
+      this.logger.error(`Failed to register cron job upon enable for '${jobId}'`, e);
+    }
+    this.logger.log(`Enabled scheduled job '${jobId}'`);
+  }
+
   async listForWorkspace(workspaceId: string) {
     return this.prisma.scheduledJob.findMany({ where: { workspaceId } });
   }

@@ -9,7 +9,7 @@ export function useCreateConnection() {
   return useMutation({
     mutationFn: (data: Partial<ConnectionDto>) => connectionService.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.connections });
+      queryClient.invalidateQueries({ queryKey: ['connections'] });
     },
   });
 }
@@ -20,7 +20,7 @@ export function useDeleteConnection() {
   return useMutation({
     mutationFn: (id: string) => connectionService.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.connections });
+      queryClient.invalidateQueries({ queryKey: ['connections'] });
     },
   });
 }

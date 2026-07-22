@@ -97,7 +97,7 @@ export class GoogleConnectionProvider implements ConnectionProvider {
     return credential;
   }
 
-  private async refreshAccessToken(context: ConnectionContext, credential: ConnectionCredential): Promise<ConnectionCredential> {
+  async refreshAccessToken(context: ConnectionContext, credential: ConnectionCredential): Promise<ConnectionCredential> {
     const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = this.configService.get<string>('GOOGLE_CLIENT_SECRET');
 
