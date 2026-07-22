@@ -34,13 +34,12 @@ export class PromptBuilderService {
     const nonSystemMessages = messages.filter((m: any) => m.role !== 'system');
 
     const systemMessage: ILLMMessage = { role: 'system', content: SYSTEM_PROMPT };
-    const llmMessages: ILLMMessage[] = [systemMessage, ...nonSystemMessages.map(msg => this.mapMessage(msg))];
+    // Only keep the last 10 messages to avoid blowing up the context window
+    const recentMessages = nonSystemMessages.slice(-10);
+    const llmMessages: ILLMMessage[] = [systemMessage, ...recentMessages.map(msg => this.mapMessage(msg))];
     const tools: ILLMTool[] = capabilities.map(cap => this.mapCapabilityToTool(cap));
     const toolsJsonStr = JSON.stringify(tools);
     console.log(`[PromptBuilder] Total tools size: ${toolsJsonStr.length} chars. Tool count: ${tools.length}`);
-    if (toolsJsonStr.length > 50000) {
-      console.log(`[PromptBuilder] Tools are massive! First tool: ${tools[0]?.name}`);
-    }
     return { messages: llmMessages, tools };
   }
 
@@ -76,13 +75,17 @@ export class PromptBuilderService {
       }
       case 'tool': {
         const toolPart = msg.parts?.find((p: any) => p.type === 'tool_result' || p.type === 'TOOL_RESULT');
-        const result = toolPart?.content?.result || msg.result || '';
+        const rawResult = toolPart?.content?.result || msg.result || '';
         const toolCallId = toolPart?.toolCallId || msg.toolCallId || '';
         const toolName = toolPart?.content?.name || msg.toolName || '';
+        let resultStr = typeof rawResult === 'string' ? rawResult : JSON.stringify(rawResult);
+        if (resultStr.length > 2000) {
+          resultStr = resultStr.substring(0, 2000) + '... (truncated)';
+        }
         
         return {
           role: 'tool',
-          content: typeof result === 'string' ? result : JSON.stringify(result),
+          content: resultStr,
           toolCallId,
           name: toolName
         };

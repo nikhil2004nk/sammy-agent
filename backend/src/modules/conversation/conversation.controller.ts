@@ -82,7 +82,7 @@ export class ConversationController {
       userId: req.user?.userId,
       modelConfig: {
         provider: 'openai',
-        model: 'openrouter/auto', // Try auto routing
+        model: 'openrouter/free', // Using a free model to avoid credit limits
         temperature: 0.7,
         maxTokens: 500
       },
