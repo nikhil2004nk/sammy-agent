@@ -9,6 +9,8 @@ import { Send, Bot, User, TerminalSquare, ListTree, Database, MessageSquare, Pan
 import { StatusBadge } from '@/components/primitives/StatusBadge';
 import { BackendPlannedPlaceholder } from '@/components/primitives/BackendPlannedPlaceholder';
 import { LoadingState } from '@/components/primitives/LoadingState';
+import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
+import { useLiveRun } from '@/domains/execution/api';
 
 const isJson = (str: string) => {
   const trimmed = str.trim();
@@ -32,6 +34,8 @@ export default function ConversationsPage() {
   const { data: messages, isLoading: isLoadingMessages } = useConversationMessages(activeConversationId || '');
   const sendMessage = useSendMessage();
   const [input, setInput] = useState('');
+
+  const activeRun = useLiveRun(activeConversationId);
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -220,17 +224,15 @@ export default function ConversationsPage() {
         </div>
       </div>
 
-      {/* Right Execution Area (Mocked for now) */}
+      {/* Right Execution Area */}
       <div className="w-80 flex flex-col min-w-0 bg-black/10 backdrop-blur-xl z-10 border-l border-white/5">
-        <BackendPlannedPlaceholder 
-          title="Live Execution Trace"
-          milestone="Milestone 11" 
-          expectedFeatures={[
-            "Real-time visualization of agent steps",
-            "Memory retrieval tracing",
-            "Tool call inspection alongside chat"
-          ]}
-        />
+        {activeRun ? (
+          <ExecutionTimeline run={activeRun} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground p-8 text-center">
+            Send a message to see the live execution trace.
+          </div>
+        )}
       </div>
     </div>
   );

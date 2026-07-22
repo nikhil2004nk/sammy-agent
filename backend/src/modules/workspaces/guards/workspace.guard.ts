@@ -8,7 +8,7 @@ export class WorkspaceGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    const workspaceId = request.headers['x-workspace-id'];
+    const workspaceId = request.headers['x-workspace-id'] || request.query.workspaceId;
 
     if (!user) {
       throw new ForbiddenException('User not authenticated');

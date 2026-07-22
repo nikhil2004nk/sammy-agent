@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Body, Sse, MessageEvent, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Sse, MessageEvent, UseGuards, Headers, Req } from '@nestjs/common';
 import { ExecutionTrackerService } from './execution-tracker.service';
 import { ExecutionStreamService } from './execution-stream.service';
 import { RunDto } from './dto/run.dto';
@@ -96,9 +96,10 @@ export class ExecutionController {
 
   @Sse('executions/:executionId/stream')
   async streamRun(
-    @Headers('x-workspace-id') workspaceId: string,
+    @Req() req: any,
     @Param('executionId') executionId: string
   ): Promise<Observable<MessageEvent>> {
+    const workspaceId = req.workspaceId;
     const run = await this.executionTracker.getRunWithNodes(executionId);
     await this.conversationService.getConversation(workspaceId, run.conversationId);
     return this.streamService.subscribeToRun(executionId).pipe(

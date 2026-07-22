@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { apiClient } from '@/services/api';
+import { useAuthStore } from '@/store/auth.store';
 import type { 
   Run, 
   ExecutionStatus, 
@@ -168,7 +169,8 @@ export function useLiveRun(conversationId: string | null): Run | null {
     }
 
     // Connect to SSE stream
-    const eventSource = new EventSource(`http://localhost:3001/executions/${latestRun.id}/stream`); // Adjust host as needed in real env
+    const workspaceId = useAuthStore.getState().activeWorkspaceId;
+    const eventSource = new EventSource(`http://localhost:3001/executions/${latestRun.id}/stream?workspaceId=${workspaceId}`, { withCredentials: true });
 
     eventSource.onopen = () => {
       // On reconnect, we fetch the run to reconcile any missed events
