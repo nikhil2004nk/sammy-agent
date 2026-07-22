@@ -141,10 +141,10 @@ export default function ConversationsPage() {
                          <details className="group border border-white/10 rounded-xl bg-black/20 overflow-hidden my-1">
                            <summary className="flex items-center gap-2 px-4 py-2.5 cursor-pointer select-none text-xs font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors">
                              <TerminalSquare className="w-4 h-4 text-primary/70" />
-                             <span>Used Tool: <span className="text-primary/90">{msg.content.replace('[Tool Call]', '').trim()}</span></span>
+                             <span>Used Tool: <span className="text-primary/90">{msg.content.split('\n')[0].replace('[Tool Call]', '').trim()}</span></span>
                            </summary>
                            <div className="px-4 py-3 border-t border-white/5 bg-black/40 text-xs font-mono text-white/60 whitespace-pre-wrap">
-                             {msg.content}
+                             {msg.content.substring(msg.content.indexOf('\n') + 1)}
                            </div>
                          </details>
                        ) : isJson(msg.content) ? (
