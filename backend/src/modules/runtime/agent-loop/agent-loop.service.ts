@@ -9,6 +9,8 @@ import { MemoryService } from '../../memory/memory.service';
 import * as crypto from 'crypto';
 import { MessageRole, MessagePartType, MessagePartStatus, RunStatus, ExecutionNodeType, ExecutionNodeStatus } from '@prisma/client';
 
+import { ExecutionStreamService } from '../../execution/execution-stream.service';
+
 @Injectable()
 export class AgentLoopService {
   private readonly logger = new Logger(AgentLoopService.name);
@@ -19,6 +21,7 @@ export class AgentLoopService {
     private readonly actionExecutor: ActionExecutorService,
     private readonly executionTracker: ExecutionTrackerService,
     private readonly memoryService: MemoryService,
+    private readonly stream: ExecutionStreamService,
   ) {}
 
   /**
@@ -58,6 +61,7 @@ export class AgentLoopService {
         }]
       };
       await this.conversationService.appendMessage(context.workspaceId, conversationId, userMessage);
+      this.stream.publish(run.id, 'message.created', { message: userMessage });
 
       // 2. Retrieve memory context and attach to ExecutionContext for AgentStepService (system prompt injection)
       this.logger.log(`[Run ${run.id}] [Step 3] Retrieving memory context for workspace '${context.workspaceId}'`);
@@ -155,6 +159,7 @@ Last Updated   ${lastUpdated}
             }]
           };
           await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
+          this.stream.publish(run.id, 'message.created', { message: assistantMsg });
           await this.executionTracker.updateRunStatus(run.id, RunStatus.COMPLETED, 'Completed');
           this.logger.log(`[Run ${run.id}] [Step 8] Run completed successfully.`);
 
@@ -246,6 +251,7 @@ Cost                 $0.0000
             }))
           };
           await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
+          this.stream.publish(run.id, 'message.created', { message: assistantMsg });
 
           this.logger.log(`[Run ${run.id}] [Step 8.${stepCount}] Executing tools via ActionExecutorService...`);
           const toolMessages = await this.actionExecutor.executeAction(context, action);
@@ -253,6 +259,7 @@ Cost                 $0.0000
           this.logger.log(`[Run ${run.id}] [Step 9.${stepCount}] Appending tool execution results back to conversation.`);
           for (const msg of toolMessages) {
             await this.conversationService.appendMessage(context.workspaceId, conversationId, msg);
+            this.stream.publish(run.id, 'message.created', { message: msg });
           }
           continue;
         }

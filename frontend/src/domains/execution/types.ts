@@ -46,6 +46,7 @@ export type ExecutionEventType =
   | 'run.failed'
   | 'node.created'
   | 'node.updated'
+  | 'message.created'
   | 'message.delta'
   | 'message.completed'
   | 'planner.started'
@@ -116,6 +117,7 @@ export type ExecutionEventPayloadMap = {
   'run.failed': RunFailedPayload;
   'node.created': NodeCreatedPayload;
   'node.updated': NodeUpdatedPayload;
+  'message.created': { message: any };
   'message.delta': MessageDeltaPayload;
   'message.completed': MessageCompletedPayload;
   'planner.started': unknown;

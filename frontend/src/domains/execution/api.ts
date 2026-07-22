@@ -215,6 +215,14 @@ export function useLiveRun(conversationId: string | null): Run | null {
               };
               return { ...currentState, nodes: [...currentState.nodes, newNode] };
             }
+            case 'message.created': {
+              const p = parsed.payload as { message: Message };
+              queryClient.setQueryData<Message[]>(queryKeys.conversationMessages(latestRun.conversationId), (oldMessages) => {
+                if (!oldMessages) return [p.message];
+                return [...oldMessages, p.message];
+              });
+              return currentState;
+            }
             case 'node.updated': {
               const p = parsed.payload as NodeUpdatedPayload;
               return {
@@ -235,11 +243,28 @@ export function useLiveRun(conversationId: string | null): Run | null {
               // 1. Update the chat messages directly
               queryClient.setQueryData<Message[]>(queryKeys.conversationMessages(latestRun.conversationId), (oldMessages) => {
                 if (!oldMessages) return oldMessages;
-                return oldMessages.map((msg, idx, arr) => {
-                  // Find the last assistant message (which should be the optimistic one)
+                
+                const lastMsg = oldMessages[oldMessages.length - 1];
+                let targetMessages = oldMessages;
+                
+                // If the last message is a Tool Result (role: 'tool'), or the last assistant message is a Tool Call, we need a new assistant message!
+                const isAfterTool = lastMsg && ((lastMsg.role as string) === 'tool' || (lastMsg.role === 'assistant' && (lastMsg.content || '').startsWith('[Tool Call]')));
+                if (isAfterTool) {
+                  // Only create it if we are actually receiving text (not just another Tool JSON from a different stream)
+                  if (!p.delta.startsWith('{"') && !p.delta.startsWith('\n\n[Tool Call:')) {
+                    const newAssistantMsg = {
+                      id: 'optimistic-assistant-response-' + Date.now(),
+                      role: 'assistant',
+                      content: '',
+                      createdAt: new Date().toISOString(),
+                    } as any;
+                    targetMessages = [...oldMessages, newAssistantMsg];
+                  }
+                }
+
+                return targetMessages.map((msg, idx, arr) => {
                   const isTarget = msg.role === 'assistant' && idx === arr.findLastIndex(x => x.role === 'assistant');
                   if (isTarget) {
-                    // Remove 'Thinking...' placeholder if it's the first delta
                     const currentContent = msg.content === 'Thinking...' ? '' : (msg.content || '');
                     return { ...msg, content: currentContent + p.delta };
                   }
