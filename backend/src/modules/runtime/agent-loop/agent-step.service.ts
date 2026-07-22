@@ -60,6 +60,23 @@ Estimated Tokens       ~${estimatedTokens}
       }
     );
 
+    // 3.5 Fallback: Parse raw JSON from content if model failed to use native tool calling
+    if ((!response.toolCalls || response.toolCalls.length === 0) && response.content) {
+      try {
+        const parsed = JSON.parse(response.content.trim());
+        if (parsed && typeof parsed === 'object' && parsed.name && parsed.arguments) {
+          response.toolCalls = [{
+            id: 'call_' + Math.random().toString(36).substring(2, 9),
+            name: parsed.name,
+            arguments: typeof parsed.arguments === 'string' ? JSON.parse(parsed.arguments) : parsed.arguments
+          }];
+          response.content = ''; // Clear content so it is treated strictly as a tool call
+        }
+      } catch (e) {
+        // Not a JSON tool call, proceed normally
+      }
+    }
+
     // 4. Determine Action
     if (response.toolCalls && response.toolCalls.length > 0) {
       this.logger.log(`

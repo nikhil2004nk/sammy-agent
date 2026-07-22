@@ -82,9 +82,8 @@ export class ConversationController {
       userId: req.user?.userId,
       modelConfig: {
         provider: 'openai',
-        model: 'openrouter/free', // Using a free model to avoid credit limits
-        temperature: 0.7,
-        maxTokens: 200
+        model: 'qwen2.5-coder:3b', // Switched to local Ollama model
+        temperature: 0.7
       },
     };
 
