@@ -18,7 +18,7 @@ import type {
   RunFailedPayload
 } from './types';
 import { conversationKeys } from '../conversation/api';
-import type { Message } from '../conversation/types';
+import type { Message } from '@/services/api/conversation/types';
 
 // ---- Backend DTO shapes ----
 
@@ -51,6 +51,7 @@ interface BackendRun {
 // ---- Adapters ----
 
 function normalizeStatus(s: string): ExecutionStatus {
+  if (!s) return 'Running';
   const map: Record<string, ExecutionStatus> = {
     queued: 'Queued',
     running: 'Running',
@@ -59,7 +60,7 @@ function normalizeStatus(s: string): ExecutionStatus {
     cancelled: 'Cancelled',
     requires_action: 'Running', // treat as still-active
   };
-  return map[s] ?? 'Running';
+  return map[s.toLowerCase()] ?? 'Running';
 }
 
 function normalizeNodeType(t: string): ExecutionNodeType {
@@ -238,8 +239,8 @@ export function useLiveRun(conversationId: string | null): Run | null {
                   const isTarget = msg.role === 'assistant' && idx === arr.findLastIndex(x => x.role === 'assistant');
                   if (isTarget) {
                     // Remove 'Thinking...' placeholder if it's the first delta
-                    const currentContent = msg.parts[0]?.content === 'Thinking...' ? '' : (msg.parts[0]?.content || '');
-                    return { ...msg, parts: [{ type: 'text', content: currentContent + p.delta }] };
+                    const currentContent = msg.content === 'Thinking...' ? '' : (msg.content || '');
+                    return { ...msg, content: currentContent + p.delta };
                   }
                   return msg;
                 });
