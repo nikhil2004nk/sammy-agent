@@ -5,6 +5,7 @@ import { Task, TaskStatus } from '../../../planner/models/task.model';
 import { ExecutionContext } from '../../../../common/execution-context';
 import { DelegationContract } from '../../models/delegation-contract.model';
 import { NodeExecutorRegistry } from './nodes/node-executor.registry';
+import { formatLog } from '../../../../common/logger-utils';
 
 @Injectable()
 export class ExecutionSchedulerService {
@@ -47,7 +48,7 @@ export class ExecutionSchedulerService {
         // Budget check (Execution Monitor)
         const nodesExecuted = context.budgetConsumption?.maxExecutionNodes || 0;
         if (context.budget?.maxExecutionNodes && nodesExecuted >= context.budget.maxExecutionNodes) {
-          this.logger.warn(`Budget Exceeded: maxExecutionNodes (${context.budget.maxExecutionNodes}) reached.`);
+          this.logger.warn(formatLog(context, `Budget Exceeded: maxExecutionNodes (${context.budget.maxExecutionNodes}) reached.`));
           this.eventBus.emitBudgetExceeded(context.traceId, 'maxExecutionNodes', context.budget.maxExecutionNodes, nodesExecuted);
           
           // Cancel remaining
@@ -97,7 +98,7 @@ export class ExecutionSchedulerService {
            // This means there's a dependency cycle or a dependency failed
            const pending = tasks.filter(t => t.status === TaskStatus.QUEUED || t.status === TaskStatus.READY);
            if (pending.length > 0) {
-              this.logger.warn(`Execution stalled. Cancelling remaining ${pending.length} tasks.`);
+              this.logger.warn(formatLog(context, `Execution stalled. Cancelling remaining ${pending.length} tasks.`));
               pending.forEach(t => {
                  t.status = TaskStatus.CANCELLED; 
                  this.eventBus.emitTaskCancelled(context.traceId, t.id, 'Dependencies failed or cycle detected');
@@ -128,7 +129,7 @@ export class ExecutionSchedulerService {
             this.eventBus.emitTaskRetried(context.traceId, task.id, attempt);
           }
           
-          this.logger.log(`Executing node ${task.id} of type ${nodeType} (Attempt ${attempt + 1}/${maxRetries})`);
+          this.logger.log(formatLog(context, `Executing node ${task.id} of type ${nodeType} (Attempt ${attempt + 1}/${maxRetries})`));
           
           const result = await executor.executeNode(task, context);
           
@@ -139,19 +140,19 @@ export class ExecutionSchedulerService {
               this.eventBus.emitTaskCompleted(context.traceId, task.id, result.output);
             } else if (result.action === 'SKIP') {
               task.status = TaskStatus.SKIPPED;
-              this.logger.log(`Task ${task.id} was SKIPPED`);
+              this.logger.log(formatLog(context, `Task ${task.id} was SKIPPED`));
               // Could emit a TaskSkipped event if desired
             } else if (result.action === 'INJECT_TASKS' && result.tasksToInject) {
               task.status = TaskStatus.COMPLETED; // The loop node itself is done compiling tasks
               tasksList.push(...result.tasksToInject);
-              this.logger.log(`Injected ${result.tasksToInject.length} tasks from loop node ${task.id}`);
+              this.logger.log(formatLog(context, `Injected ${result.tasksToInject.length} tasks from loop node ${task.id}`));
             }
           } else {
             throw new Error(result.error || 'Node execution failed without specific error');
           }
         } catch (err: any) {
            attempt++;
-           this.logger.warn(`Task ${task.id} attempt ${attempt} failed: ${err.message}`);
+           this.logger.warn(formatLog(context, `Task ${task.id} attempt ${attempt} failed: ${err.message}`));
            if (attempt >= maxRetries) {
              task.status = TaskStatus.FAILED;
              this.eventBus.emitTaskFailed(context.traceId, task.id, err.message);

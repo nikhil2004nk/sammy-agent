@@ -10,6 +10,7 @@ import { ExecutionPlan } from '../../planner/models/execution-plan.model';
 import { TaskStatus } from '../../planner/models/task.model';
 import { DelegationContract } from '../models/delegation-contract.model';
 import { ExecutionSchedulerService } from './scheduler/execution-scheduler.service';
+import { formatLog } from '../../../common/logger-utils';
 
 @Injectable()
 export class ExecutionService {
@@ -30,22 +31,22 @@ export class ExecutionService {
    */
   async executeTurn(context: ExecutionContext, userInput: string): Promise<string> {
     this.eventBus.emitExecutionStarted(context.traceId, context.agentId, context.conversationId || 'unknown');
-    this.logger.log(`Starting execution turn for traceId: ${context.traceId}`);
+    this.logger.log(formatLog(context, `Starting execution turn for traceId: ${context.traceId}`));
 
     try {
       if (context.featureFlags?.useNewPlanner) {
         const finalResponse = await this.executeIterativePlan(context, userInput);
-        this.logger.log(`Finished iterative DAG execution for traceId: ${context.traceId}`);
+        this.logger.log(formatLog(context, `Finished iterative DAG execution for traceId: ${context.traceId}`));
         this.eventBus.emitExecutionFinished(context.traceId, context.agentId, context.conversationId || 'unknown', finalResponse);
         return finalResponse;
       } else {
         const finalResponse = await this.agentLoop.runLoop(context, context.conversationId || 'unknown', userInput);
-        this.logger.log(`Finished legacy execution turn for traceId: ${context.traceId}`);
+        this.logger.log(formatLog(context, `Finished legacy execution turn for traceId: ${context.traceId}`));
         this.eventBus.emitExecutionFinished(context.traceId, context.agentId, context.conversationId || 'unknown', finalResponse);
         return finalResponse;
       }
     } catch (error) {
-      this.logger.error(`Execution failed for traceId: ${context.traceId}`, error);
+      this.logger.error(formatLog(context, `Execution failed for traceId: ${context.traceId}`), error);
       throw error;
     }
   }
@@ -59,7 +60,7 @@ export class ExecutionService {
 
     while (!isComplete && iteration < maxIterations) {
       iteration++;
-      this.logger.log(`Planning Iteration ${iteration} for: ${currentInput}`);
+      this.logger.log(formatLog(context, `Planning Iteration ${iteration} for: ${currentInput}`));
 
       const intent = await this.intentAnalyzer.analyze(currentInput);
       const planningResult = await this.planner.createPlan(context, intent);
@@ -75,7 +76,7 @@ export class ExecutionService {
       lastFeedback = reflection.feedback;
 
       if (!isComplete) {
-        this.logger.warn(`Reflection indicated incomplete plan: ${reflection.feedback}. Replanning...`);
+        this.logger.warn(formatLog(context, `Reflection indicated incomplete plan: ${reflection.feedback}. Replanning...`));
         currentInput = `Previous plan was incomplete. Goal: ${userInput}. Feedback to address: ${reflection.feedback}`;
       }
     }
@@ -84,7 +85,7 @@ export class ExecutionService {
   }
 
   private async runDag(context: ExecutionContext, plan: ExecutionPlan, goal: string): Promise<void> {
-    this.logger.log(`Delegating DAG execution to ExecutionSchedulerService for plan: ${plan.id}`);
+    this.logger.log(formatLog(context, `Delegating DAG execution to ExecutionSchedulerService for plan: ${plan.id}`));
     await this.scheduler.schedule(plan, context);
   }
 }

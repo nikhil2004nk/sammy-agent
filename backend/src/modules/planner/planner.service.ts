@@ -4,6 +4,7 @@ import { Intent } from './interfaces/intent.interface';
 import { PlanningResult } from './dto/planning-result.dto';
 import { TaskStatus } from './models/task.model';
 import { IPlanningMemory } from './interfaces/planning-memory.interface';
+import { formatLog } from '../../common/logger-utils';
 import * as crypto from 'crypto';
 
 /**
@@ -29,10 +30,10 @@ export class PlannerService {
    * We wrap it in a PlanningResult to begin the transition to structured results.
    */
   async createPlan(context: ExecutionContext, intent: Intent): Promise<PlanningResult> {
-    this.logger.log(`Fetching relevant memory for goal: ${intent.goal}`);
+    this.logger.log(formatLog(context, `Fetching relevant memory for goal: ${intent.goal}`));
     // Simulate fetching context from memory
     const memorySnapshot = await this.memory.getRelevantContext(context.workspaceId, intent.goal, context.userId);
-    this.logger.debug(`Retrieved memory snapshot size: ${memorySnapshot.context.length} bytes`);
+    this.logger.debug(formatLog(context, `Retrieved memory snapshot size: ${memorySnapshot.context.length} bytes`));
 
     const task1Id = crypto.randomUUID();
     const task2Id = crypto.randomUUID();
