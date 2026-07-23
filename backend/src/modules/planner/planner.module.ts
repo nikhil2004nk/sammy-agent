@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { LlmModule } from '../llm/llm.module';
 import { PlannerService } from './planner.service';
 import { IntentAnalyzerService } from './intent-analyzer.service';
 import { CapabilityResolverService } from './capability-resolver.service';
@@ -9,7 +10,7 @@ import { MemoryService } from '../memory/memory.service';
 import { IPlanningMemory } from './interfaces/planning-memory.interface';
 
 @Module({
-  imports: [RegistryModule, MemoryModule],
+  imports: [RegistryModule, MemoryModule, LlmModule],
   providers: [
     PlannerService, 
     IntentAnalyzerService, 
