@@ -47,7 +47,7 @@ import { MemoryModule } from '../memory/memory.module';
     ConditionNodeExecutor,
     LoopNodeExecutor
   ],
-  exports: [ExecutionService, AgentLoopService],
+  exports: [ExecutionService, AgentLoopService, ExecutionSchedulerService],
 })
 export class RuntimeModule implements OnModuleInit {
   constructor(

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Param, Body, UseGuards, Delete } from '@nestjs/common';
 import { WorkflowService } from './workflow.service';
-import { WorkflowRunnerService } from './workflow-runner.service';
+import { WorkflowCompilerService } from '../workflow/workflow-compiler.service';
+import { ExecutionSchedulerService } from '../runtime/execution/scheduler/execution-scheduler.service';
 import { WorkflowGraph } from './workflow.types';
 import { ExecutionContext } from '../../common/execution-context';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,7 +13,8 @@ import * as crypto from 'crypto';
 export class WorkflowController {
   constructor(
     private readonly workflowService: WorkflowService,
-    private readonly workflowRunner: WorkflowRunnerService,
+    private readonly compilerService: WorkflowCompilerService,
+    private readonly schedulerService: ExecutionSchedulerService,
   ) {}
 
   @Get()
@@ -71,6 +73,20 @@ export class WorkflowController {
       workspaceId,
       agentId: body?.agentId || 'workflow-runner',
     };
-    return this.workflowRunner.run(workflowId, context);
+
+    const workflowRecord = await this.workflowService.findOne(workspaceId, workflowId);
+    
+    // Compile workflow to DAG
+    const plan = this.compilerService.compile(workflowRecord.graph as any);
+
+    // Schedule DAG directly on the Execution Scheduler
+    await this.schedulerService.schedule(plan, context);
+
+    return { 
+      success: true, 
+      workflowId, 
+      runId: context.runId,
+      traceId: context.traceId 
+    };
   }
 }

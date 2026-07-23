@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { PrismaService } from '../prisma/prisma.service';
-import { AgentLoopService } from '../runtime/agent-loop/agent-loop.service';
+import { ExecutionService } from '../runtime/execution/execution.service';
 import { ScheduledJobConfig } from './scheduler.types';
 import { DEFAULT_MAX_DELEGATION_DEPTH } from '../../common/execution-context';
 import * as crypto from 'crypto';
@@ -12,7 +12,7 @@ import * as crypto from 'crypto';
  *
  * Manages cron-based scheduled agent runs.
  *
- * Critical rule: Scheduler ALWAYS triggers AgentLoopService.runLoop().
+ * Critical rule: Scheduler ALWAYS triggers ExecutionService.executeTurn().
  * It NEVER calls the Planner directly. This ensures scheduled executions
  * behave identically to user-triggered ones — same memory, same tools, same approvals.
  */
@@ -23,7 +23,7 @@ export class SchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly schedulerRegistry: SchedulerRegistry,
-    private readonly agentLoop: AgentLoopService,
+    private readonly executionService: ExecutionService,
   ) {}
 
   async create(config: ScheduledJobConfig): Promise<string> {
@@ -105,17 +105,16 @@ export class SchedulerService {
       const runId = crypto.randomUUID();
       const traceId = crypto.randomUUID();
 
-      // Scheduler → AgentLoopService (never directly to Planner)
-      await this.agentLoop.runLoop(
+      // Scheduler → ExecutionService
+      await this.executionService.executeTurn(
         {
           runId,
           traceId,
           workspaceId: config.workspaceId,
           agentId: config.agentId || 'scheduler',
-          delegationDepth: 0,
-          maxDelegationDepth: DEFAULT_MAX_DELEGATION_DEPTH,
+          featureFlags: { useNewPlanner: true },
+          budget: { maxExecutionNodes: 50, maxConcurrency: 5, maxRetries: 3 }
         },
-        conversationId,
         config.goal,
       );
     } catch (err) {

@@ -85,6 +85,14 @@ export class ConversationController {
         model: 'qwen2.5-coder:3b', // Switched to local Ollama model
         temperature: 0.7
       },
+      featureFlags: { 
+        useNewPlanner: true 
+      },
+      budget: { 
+        maxExecutionNodes: 50, 
+        maxConcurrency: 5, 
+        maxRetries: 3 
+      },
     };
 
     // 2. Execute (AgentLoopService will save both the user message and assistant message)

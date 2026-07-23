@@ -2,6 +2,7 @@ import { Controller, Get, Post, Param, Body, Sse, MessageEvent, UseGuards, Heade
 import { ExecutionTrackerService } from './execution-tracker.service';
 import { ExecutionStreamService } from './execution-stream.service';
 import { RunDto } from './dto/run.dto';
+import { RunStatus } from './execution.types';
 import * as crypto from 'crypto';
 import { Observable, map } from 'rxjs';
 import { ApprovalService } from '../tools/approval/approval.service';
@@ -116,8 +117,7 @@ export class ExecutionController {
   ) {
     const run = await this.executionTracker.getRunWithNodes(executionId);
     await this.conversationService.getConversation(workspaceId, run.conversationId);
-    // Cancellation logic to be implemented fully in ExecutionTrackerService
-    // For now we simulate cancellation response
+    await this.executionTracker.updateRunStatus(executionId, RunStatus.CANCELLED, 'Cancelled by user');
     return { success: true, message: 'Execution cancelled' };
   }
 
@@ -128,7 +128,7 @@ export class ExecutionController {
   ) {
     const run = await this.executionTracker.getRunWithNodes(executionId);
     await this.conversationService.getConversation(workspaceId, run.conversationId);
-    // Retry logic to be implemented
+    await this.executionTracker.updateRunStatus(executionId, RunStatus.QUEUED, 'Retried by user');
     return { success: true, message: 'Execution retry queued' };
   }
 }
