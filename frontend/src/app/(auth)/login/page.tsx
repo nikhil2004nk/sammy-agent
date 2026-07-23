@@ -41,7 +41,7 @@ export default function LoginPage() {
         if (workspaces) {
           useAuthStore.getState().setWorkspaces(workspaces);
         }
-        router.push('/');
+        router.push('/workspace/chats');
       } else {
         setError(meError?.message || 'Failed to fetch user profile');
       }
