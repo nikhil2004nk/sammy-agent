@@ -70,13 +70,13 @@ export class ConversationController {
     @Req() req: any,
     @Headers('x-workspace-id') workspaceId: string, 
     @Param('id') id: string, 
-    @Body() body: { content: string }
+    @Body() body: { content: string, runId?: string }
   ) {
     // 1. Create Context
     const context: ExecutionContext = {
       traceId: crypto.randomUUID(),
       conversationId: id,
-      runId: crypto.randomUUID(),
+      runId: body.runId || crypto.randomUUID(),
       workspaceId,
       agentId: crypto.randomUUID(),
       userId: req.user?.userId,

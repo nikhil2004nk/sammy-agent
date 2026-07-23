@@ -32,8 +32,8 @@ export function useSendMessage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, content }: { id: string; content: string }) => 
-      conversationService.sendMessage(id, content),
+    mutationFn: ({ id, content, runId }: { id: string; content: string; runId?: string }) => 
+      conversationService.sendMessage(id, content, runId),
     onMutate: async ({ id, content }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.conversationMessages(id) });
       

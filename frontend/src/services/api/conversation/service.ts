@@ -30,10 +30,10 @@ export const conversationService = {
     return data.map(mapMessageToDomain);
   },
   
-  sendMessage: async (conversationId: string, content: string) => {
+  sendMessage: async (conversationId: string, content: string, runId?: string) => {
     const response = await apiClient<MessageDto>(`/conversations/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ content })
+      body: JSON.stringify({ content, runId })
     });
     return mapMessageToDomain(response);
   }
