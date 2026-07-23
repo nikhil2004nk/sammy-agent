@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ICapabilityResolver, AgentIdentity } from './interfaces/capability-resolver.interface';
+import { ICapabilityResolver, ExecutionTarget, TargetType } from './interfaces/capability-resolver.interface';
 import { AgentRegistryService } from '../registry/agent-registry.service';
 
 @Injectable()
@@ -8,16 +8,16 @@ export class CapabilityResolverService implements ICapabilityResolver {
 
   constructor(private readonly agentRegistry: AgentRegistryService) {}
 
-  async resolve(requiredCapabilities: string[]): Promise<AgentIdentity[]> {
-    this.logger.log(`Resolving agents for capabilities: ${requiredCapabilities.join(', ')}`);
-    const resolvedAgents: AgentIdentity[] = [];
+  async resolve(requiredCapabilities: string[]): Promise<ExecutionTarget[]> {
+    this.logger.log(`Resolving execution targets for capabilities: ${requiredCapabilities.join(', ')}`);
+    const resolvedTargets: ExecutionTarget[] = [];
 
-    // Simple resolution logic: Find agents that have at least one required capability
+    // Note: Future implementations will resolve MCP_SERVER, WORKFLOW, or HUMAN targets here as well.
     for (const capability of requiredCapabilities) {
-      const matchingAgents = this.agentRegistry.findAgentsByCapability(capability);
+      const matchingAgents = await this.agentRegistry.findMatchingAgents(capability);
       
       if (matchingAgents.length === 0) {
-        this.logger.warn(`No agent found with capability: ${capability}`);
+        this.logger.warn(`No target found with capability: ${capability}`);
         continue;
       }
 
@@ -25,15 +25,16 @@ export class CapabilityResolverService implements ICapabilityResolver {
       const bestAgent = matchingAgents[0];
       
       // Avoid duplicates
-      if (!resolvedAgents.some(a => a.id === bestAgent.id)) {
-        resolvedAgents.push({
+      if (!resolvedTargets.some(t => t.id === bestAgent.id)) {
+        resolvedTargets.push({
           id: bestAgent.id,
+          type: 'AGENT',
           name: bestAgent.name,
-          capabilities: bestAgent.capabilities,
+          capabilities: bestAgent.capabilities.map(c => c.capability.key),
         });
       }
     }
 
-    return resolvedAgents;
+    return resolvedTargets;
   }
 }

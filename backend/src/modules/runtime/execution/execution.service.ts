@@ -8,6 +8,7 @@ import { IntentAnalyzerService } from '../../planner/intent-analyzer.service';
 import { ReflectionEngineService } from '../../planner/reflection-engine.service';
 import { ExecutionPlan } from '../../planner/models/execution-plan.model';
 import { TaskStatus } from '../../planner/models/task.model';
+import { DelegationContract } from '../models/delegation-contract.model';
 
 @Injectable()
 export class ExecutionService {
@@ -103,14 +104,26 @@ export class ExecutionService {
 
       this.logger.log(`Executing ${readyTasks.length} parallel tasks...`);
 
-      // Execute ready tasks in parallel
+      // Execute ready tasks in parallel (conceptual Task Scheduler -> Worker Allocation -> Execution)
       await Promise.all(readyTasks.map(async (task) => {
         task.status = TaskStatus.RUNNING;
         
-        // Use Orchestrator to delegate to a sub-agent
+        // Define a strict contract for this delegation
+        const contract: DelegationContract = {
+          goal: task.goal,
+          executionContext: context, // passing the overall context
+          constraints: [], // to be populated by Planner/Policies
+          permissions: [], 
+          memoryAccess: 'READ_WRITE',
+          expectedOutput: 'Goal successfully completed.',
+          timeoutMs: 300000 // 5 mins
+        };
+
+        // Use Orchestrator to allocate a worker agent and delegate
+        // Note: orchestrator.delegate will need to be updated to accept DelegationContract
         const delegationResult = await this.orchestrator.delegate(
           context,
-          task.goal,
+          contract as any, // Cast to any temporarily until orchestrator is updated
           context.conversationId || 'unknown'
         );
 

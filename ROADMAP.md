@@ -291,7 +291,7 @@ The evolution of Sammy is broken down into architecture-driven phases.
 * `[x]` **Milestone 4.11**: Planner Integration (Strategy selection).
 * `[x]` **Milestone 4.12**: Decouple `KnowledgeModule` (RAG) scaffolding. Vector Database implementation.
 
-### Phase 5: Agent Ecosystem [IN PROGRESS]
+### Phase 5: Agent Ecosystem [COMPLETED]
 * **Vision:** Treat multiple agents as first-class citizens in a dynamic ecosystem.
 * **Goals:** Build the Agent Registry, Capability Resolver, and parallel execution model.
 * **Deliverables:** Dynamic database-backed registry, agent lifecycle management, selection strategies (cost, latency, best match), parallel execution with dependencies, and inter-agent contracts.

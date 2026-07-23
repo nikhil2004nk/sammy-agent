@@ -83,6 +83,19 @@ enum MessagePartStatus {
   FAILED
 }
 
+enum AgentStatus {
+  ACTIVE
+  INACTIVE
+  DISABLED
+  DEPRECATED
+}
+
+enum AgentHealthStatus {
+  HEALTHY
+  UNHEALTHY
+  MAINTENANCE
+}
+
 // -------------------------------------------------------------
 // Identity & Workspace Foundation
 // -------------------------------------------------------------
@@ -216,17 +229,79 @@ model Tool {
 // -------------------------------------------------------------
 
 model Agent {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  workspaceId String?   @db.Uuid
-  name        String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  deletedAt   DateTime?
-  deletedBy   String?   @db.Uuid
+  id               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workspaceId      String?           @db.Uuid
+  key              String
+  name             String
+  description      String?           @db.Text
+  type             String?
+  version          String            @default("1.0.0")
+  status           AgentStatus       @default(ACTIVE)
+  healthStatus     AgentHealthStatus @default(HEALTHY)
+  visibility       String            @default("PRIVATE")
+  ownerWorkspaceId String?           @db.Uuid
+  executionMode    String?
+  defaultModel     String?
+  maxConcurrency   Int               @default(1)
+  costProfile      String?
+  latencyProfile   String?
+  
+  // Operational fields
+  currentLoad          Int       @default(0)
+  runningExecutions    Int       @default(0)
+  queuedExecutions     Int       @default(0)
+  lastExecutionAt      DateTime?
+  successRate          Float     @default(1.0)
+  averageExecutionTime Int?      // in milliseconds
+  
+  tags             String[]
+  metadata         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  deletedBy        String?           @db.Uuid
 
-  workspace     Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace     Workspace?         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   versions      AgentVersion[]
   conversations Conversation[]
+  capabilities  AgentCapability[]
+
+  @@unique([workspaceId, key])
+}
+
+model Capability {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key         String    @unique
+  name        String
+  description         String?   @db.Text
+  category            String?
+  version             String    @default("1.0.0")
+  inputSchema         Json?
+  outputSchema        Json?
+  requiredPermissions String[]
+  createdAt           DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  agents      AgentCapability[]
+}
+
+model AgentCapability {
+  agentId       String            @db.Uuid
+  capabilityId  String            @db.Uuid
+  status        AgentStatus       @default(ACTIVE)
+  healthStatus  AgentHealthStatus @default(HEALTHY)
+  workspaceId   String?           @db.Uuid
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  agent         Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  capability    Capability  @relation(fields: [capabilityId], references: [id], onDelete: Cascade)
+
+  @@id([agentId, capabilityId])
+  @@index([capabilityId])
+  @@index([status])
+  @@index([healthStatus])
+  @@index([workspaceId])
 }
 
 model AgentVersion {
