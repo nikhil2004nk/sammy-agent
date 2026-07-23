@@ -1,5 +1,12 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module, forwardRef, OnModuleInit } from '@nestjs/common';
 import { ExecutionService } from './execution/execution.service';
+import { ExecutionSchedulerService } from './execution/scheduler/execution-scheduler.service';
+import { AgentTaskExecutorService } from './execution/executors/agent-task-executor.service';
+import { NodeExecutorRegistry } from './execution/scheduler/nodes/node-executor.registry';
+import { TaskNodeExecutor } from './execution/scheduler/nodes/task-node-executor.service';
+import { ConditionNodeExecutor } from './execution/scheduler/nodes/condition-node-executor.service';
+import { LoopNodeExecutor } from './execution/scheduler/nodes/loop-node-executor.service';
+import { WorkflowModule } from '../workflow/workflow.module';
 import { PlannerModule } from '../planner/planner.module';
 import { PromptsModule } from '../prompts/prompts.module';
 import { LlmModule } from '../llm/llm.module';
@@ -25,8 +32,34 @@ import { MemoryModule } from '../memory/memory.module';
     RegistryModule,
     MemoryModule,
     PlannerModule,
+    WorkflowModule,
   ],
-  providers: [ExecutionService, AgentStepService, ActionExecutorService, AgentLoopService, AgentOrchestratorService],
+  providers: [
+    ExecutionService, 
+    AgentStepService, 
+    ActionExecutorService, 
+    AgentLoopService, 
+    AgentOrchestratorService, 
+    ExecutionSchedulerService, 
+    AgentTaskExecutorService,
+    NodeExecutorRegistry,
+    TaskNodeExecutor,
+    ConditionNodeExecutor,
+    LoopNodeExecutor
+  ],
   exports: [ExecutionService, AgentLoopService],
 })
-export class RuntimeModule {}
+export class RuntimeModule implements OnModuleInit {
+  constructor(
+    private readonly nodeRegistry: NodeExecutorRegistry,
+    private readonly taskExecutor: TaskNodeExecutor,
+    private readonly conditionExecutor: ConditionNodeExecutor,
+    private readonly loopExecutor: LoopNodeExecutor
+  ) {}
+
+  onModuleInit() {
+    this.nodeRegistry.register('TASK', this.taskExecutor);
+    this.nodeRegistry.register('CONDITION', this.conditionExecutor);
+    this.nodeRegistry.register('LOOP', this.loopExecutor);
+  }
+}

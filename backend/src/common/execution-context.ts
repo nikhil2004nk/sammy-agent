@@ -1,3 +1,6 @@
+import { ResourceBudget } from './models/resource-budget.model';
+import { IExecutionPolicy } from './models/execution-policy.interface';
+
 export type ExecutionMode = 'interactive' | 'background' | 'batch' | 'agent';
 
 export interface ExecutionContext {
@@ -28,6 +31,11 @@ export interface ExecutionContext {
    * Optional feature flags for safe migration and A/B testing
    */
   readonly featureFlags?: Record<string, boolean>;
+  
+  // Mutable budget state for tracking consumption
+  budget?: ResourceBudget;
+  budgetConsumption?: Partial<ResourceBudget>; // Tracks what has been used
+  policy?: IExecutionPolicy;
 
   // Optional configuration that can be passed per-run
   readonly modelConfig?: {

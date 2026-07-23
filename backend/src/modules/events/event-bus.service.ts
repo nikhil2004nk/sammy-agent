@@ -16,6 +16,15 @@ export class ExecutionStartedEvent extends AgentEvent {}
 export class ExecutionFinishedEvent extends AgentEvent {}
 export class ErrorEvent extends AgentEvent {}
 
+// Scheduler Events
+export class TaskQueuedEvent extends AgentEvent {}
+export class TaskStartedEvent extends AgentEvent {}
+export class TaskCompletedEvent extends AgentEvent {}
+export class TaskFailedEvent extends AgentEvent {}
+export class TaskRetriedEvent extends AgentEvent {}
+export class TaskCancelledEvent extends AgentEvent {}
+export class BudgetExceededEvent extends AgentEvent {}
+
 export class ServerConnectedEvent extends AgentEvent {}
 export class ServerDisconnectedEvent extends AgentEvent {}
 export class ServerHealthyEvent extends AgentEvent {}
@@ -127,5 +136,34 @@ export class EventBusService {
 
   emitMemoryCompressed(traceId: string, agentId: string, compressedRecords: any[]) {
     this.eventEmitter.emit('memory.compressed', new MemoryCompressedEvent(traceId, agentId, 'system', { compressedRecords }));
+  }
+
+  // --- Scheduler Event Emitters ---
+  emitTaskQueued(traceId: string, taskId: string, planId: string) {
+    this.eventEmitter.emit('scheduler.task.queued', new TaskQueuedEvent(traceId, 'system', 'system', { taskId, planId }));
+  }
+
+  emitTaskStarted(traceId: string, taskId: string, workerId?: string) {
+    this.eventEmitter.emit('scheduler.task.started', new TaskStartedEvent(traceId, 'system', 'system', { taskId, workerId }));
+  }
+
+  emitTaskCompleted(traceId: string, taskId: string, result: any) {
+    this.eventEmitter.emit('scheduler.task.completed', new TaskCompletedEvent(traceId, 'system', 'system', { taskId, result }));
+  }
+
+  emitTaskFailed(traceId: string, taskId: string, error: any) {
+    this.eventEmitter.emit('scheduler.task.failed', new TaskFailedEvent(traceId, 'system', 'system', { taskId, error }));
+  }
+
+  emitTaskRetried(traceId: string, taskId: string, attempt: number) {
+    this.eventEmitter.emit('scheduler.task.retried', new TaskRetriedEvent(traceId, 'system', 'system', { taskId, attempt }));
+  }
+
+  emitTaskCancelled(traceId: string, taskId: string, reason: string) {
+    this.eventEmitter.emit('scheduler.task.cancelled', new TaskCancelledEvent(traceId, 'system', 'system', { taskId, reason }));
+  }
+
+  emitBudgetExceeded(traceId: string, budgetType: string, limit: number, consumed: number) {
+    this.eventEmitter.emit('scheduler.budget.exceeded', new BudgetExceededEvent(traceId, 'system', 'system', { budgetType, limit, consumed }));
   }
 }

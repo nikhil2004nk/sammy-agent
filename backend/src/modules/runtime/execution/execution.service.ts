@@ -9,6 +9,7 @@ import { ReflectionEngineService } from '../../planner/reflection-engine.service
 import { ExecutionPlan } from '../../planner/models/execution-plan.model';
 import { TaskStatus } from '../../planner/models/task.model';
 import { DelegationContract } from '../models/delegation-contract.model';
+import { ExecutionSchedulerService } from './scheduler/execution-scheduler.service';
 
 @Injectable()
 export class ExecutionService {
@@ -21,6 +22,7 @@ export class ExecutionService {
     private readonly planner: PlannerService,
     private readonly intentAnalyzer: IntentAnalyzerService,
     private readonly reflectionEngine: ReflectionEngineService,
+    private readonly scheduler: ExecutionSchedulerService,
   ) {}
 
   /**
@@ -82,60 +84,7 @@ export class ExecutionService {
   }
 
   private async runDag(context: ExecutionContext, plan: ExecutionPlan, goal: string): Promise<void> {
-    this.logger.log(`Executing DAG for plan: ${plan.id}`);
-    const tasks = plan.tasks;
-
-    let allDone = false;
-    while (!allDone) {
-      const readyTasks = tasks.filter(t => 
-        t.status === TaskStatus.PENDING && 
-        (t.dependsOn.length === 0 || t.dependsOn.every(depId => tasks.find(x => x.id === depId)?.status === TaskStatus.COMPLETED))
-      );
-
-      if (readyTasks.length === 0) {
-        const pending = tasks.filter(t => t.status === TaskStatus.PENDING);
-        if (pending.length > 0) {
-          this.logger.error(`Deadlock detected in plan DAG. ${pending.length} tasks remain pending but none are unblocked.`);
-          pending.forEach(t => t.status = TaskStatus.FAILED);
-        }
-        allDone = true;
-        continue;
-      }
-
-      this.logger.log(`Executing ${readyTasks.length} parallel tasks...`);
-
-      // Execute ready tasks in parallel (conceptual Task Scheduler -> Worker Allocation -> Execution)
-      await Promise.all(readyTasks.map(async (task) => {
-        task.status = TaskStatus.RUNNING;
-        
-        // Define a strict contract for this delegation
-        const contract: DelegationContract = {
-          goal: task.goal,
-          executionContext: context, // passing the overall context
-          constraints: [], // to be populated by Planner/Policies
-          permissions: [], 
-          memoryAccess: 'READ_WRITE',
-          expectedOutput: 'Goal successfully completed.',
-          timeoutMs: 300000 // 5 mins
-        };
-
-        // Use Orchestrator to allocate a worker agent and delegate
-        // Note: orchestrator.delegate will need to be updated to accept DelegationContract
-        const delegationResult = await this.orchestrator.delegate(
-          context,
-          contract as any, // Cast to any temporarily until orchestrator is updated
-          context.conversationId || 'unknown'
-        );
-
-        if (delegationResult.success) {
-          task.status = TaskStatus.COMPLETED;
-        } else {
-          task.status = TaskStatus.FAILED;
-        }
-      }));
-
-      // Check if any tasks are left
-      allDone = tasks.every(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.FAILED);
-    }
+    this.logger.log(`Delegating DAG execution to ExecutionSchedulerService for plan: ${plan.id}`);
+    await this.scheduler.schedule(plan, context);
   }
 }

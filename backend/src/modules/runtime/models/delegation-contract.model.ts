@@ -1,4 +1,5 @@
 import { ExecutionContext } from '../../../common/execution-context';
+import { ResourceBudget } from '../../../common/models/resource-budget.model';
 
 export interface DelegationContract {
   /**
@@ -22,12 +23,9 @@ export interface DelegationContract {
   constraints: string[];
 
   /**
-   * Token or cost budget allocated for this delegation.
+   * Resource budget allocated for this delegation.
    */
-  budget?: {
-    maxTokens?: number;
-    maxCostCents?: number;
-  };
+  budget?: ResourceBudget;
 
   /**
    * Specific permissions granted for this execution (e.g., 'read:files', 'write:files').
