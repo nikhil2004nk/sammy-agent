@@ -42,7 +42,7 @@ export class AgentOrchestratorService {
       };
     }
 
-    const subRunId = crypto.randomUUID();
+    const subRunId = parentContext.runId;
     const subTraceId = parentContext.traceId; // Keep same trace for observability
 
     const subContext: ExecutionContext = {

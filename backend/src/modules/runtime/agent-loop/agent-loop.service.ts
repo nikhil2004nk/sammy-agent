@@ -28,12 +28,19 @@ export class AgentLoopService {
    * Orchestrates the autonomous agent reasoning loop.
    */
   async runLoop(context: ExecutionContext, conversationId: string, userInput: string): Promise<string> {
-    const run = await this.executionTracker.createRun(context.runId, conversationId, { traceId: context.traceId });
-    await this.executionTracker.updateRunStatus(run.id, RunStatus.RUNNING);
+    const isSubAgent = (context.delegationDepth ?? 0) > 0;
+    
+    if (!isSubAgent) {
+      const run = await this.executionTracker.createRun(context.runId, conversationId, { traceId: context.traceId });
+      await this.executionTracker.updateRunStatus(context.runId, RunStatus.RUNNING);
+    }
+    
+    const runId = context.runId;
+
     this.logger.log(`\n==================================================`);
-    this.logger.log(`[Run ${run.id}] Starting execution turn`);
+    this.logger.log(`[Run ${runId}] Starting execution turn (Sub-agent: ${isSubAgent})`);
     this.logger.log(`==================================================`);
-    this.logger.log(`[Run ${run.id}] [Step 1] Initializing run for conversation '${conversationId}'`);
+    this.logger.log(`[Run ${runId}] [Step 1] Initializing run for conversation '${conversationId}'`);
     
     // Aggregation Tracking Variables
     const runStartTime = Date.now();
@@ -45,26 +52,29 @@ export class AgentLoopService {
     let totalToolCalls = 0;
 
     try {
-      // 1. Append user message
-      this.logger.log(`[Run ${run.id}] [Step 2] Appending user message: "${userInput}"`);
-      const userMessage: Message = {
-        id: crypto.randomUUID(),
-        role: MessageRole.USER,
-        createdAt: Date.now(),
-        parts: [{
+      // 1. Append user message — only for top-level runs, not sub-agent delegations
+      // Sub-agent goals are internal task descriptions, NOT real user messages.
+      if (!isSubAgent) {
+        this.logger.log(`[Run ${runId}] [Step 2] Appending user message: "${userInput}"`);
+        const userMessage: Message = {
           id: crypto.randomUUID(),
-          type: MessagePartType.TEXT,
-          status: MessagePartStatus.COMPLETE,
-          order: 0,
-          content: { text: userInput },
-          createdAt: Date.now()
-        }]
-      };
-      await this.conversationService.appendMessage(context.workspaceId, conversationId, userMessage);
-      this.stream.publish(run.id, 'message.created', { message: userMessage });
+          role: MessageRole.USER,
+          createdAt: Date.now(),
+          parts: [{
+            id: crypto.randomUUID(),
+            type: MessagePartType.TEXT,
+            status: MessagePartStatus.COMPLETE,
+            order: 0,
+            content: { text: userInput },
+            createdAt: Date.now()
+          }]
+        };
+        await this.conversationService.appendMessage(context.workspaceId, conversationId, userMessage);
+        this.stream.publish(runId, 'message.created', { message: userMessage });
+      }
 
       // 2. Retrieve memory context and attach to ExecutionContext for AgentStepService (system prompt injection)
-      this.logger.log(`[Run ${run.id}] [Step 3] Retrieving memory context for workspace '${context.workspaceId}'`);
+      this.logger.log(`[Run ${runId}] [Step 3] Retrieving memory context for workspace '${context.workspaceId}'`);
       
       const memoryNode = await this.executionTracker.createNode(
         context.runId,
@@ -82,7 +92,7 @@ export class AgentLoopService {
       ).catch(() => '');
 
       if (memoryContext) {
-        this.logger.log(`[Run ${run.id}] [Step 3a] Injecting memory context into system prompt: ${memoryContext.replace(/\n/g, ' ').substring(0, 100)}...`);
+        this.logger.log(`[Run ${runId}] [Step 3a] Injecting memory context into system prompt: ${memoryContext.replace(/\n/g, ' ').substring(0, 100)}...`);
         context = { ...context, memoryContext };
         memoryItemsCount = memoryContext.split('\n').filter(l => l.trim().startsWith('-')).length;
       }
@@ -95,7 +105,7 @@ export class AgentLoopService {
       // 3. The Agent Loop
       while (stepCount < maxReasoningSteps) {
         stepCount++;
-        this.logger.log(`\n[Run ${run.id}] --- Loop Iteration ${stepCount} ---`);
+        this.logger.log(`\n[Run ${runId}] --- Loop Iteration ${stepCount} ---`);
         const messages = await this.conversationService.getMessages(context.workspaceId, conversationId);
         
         const totalParts = messages.reduce((acc, msg) => acc + (msg.parts?.length || 0), 0);
@@ -117,9 +127,9 @@ Last Updated   ${lastUpdated}
           context.agentId
         );
 
-        this.logger.log(`[Run ${run.id}] [Step 5.${stepCount}] Requesting reasoning step from LLM`);
+        this.logger.log(`[Run ${runId}] [Step 5.${stepCount}] Requesting reasoning step from LLM`);
         const action = await this.agentStepService.executeStep(context, messages);
-        this.logger.log(`[Run ${run.id}] [Step 6.${stepCount}] LLM responded with action type: '${action.type}'`);
+        this.logger.log(`[Run ${runId}] [Step 6.${stepCount}] LLM responded with action type: '${action.type}'`);
 
         await this.executionTracker.updateNodeStatus(
           reasoningNode.id,
@@ -144,7 +154,7 @@ Last Updated   ${lastUpdated}
              providerName = (action as any).usage.provider || providerName;
              modelName = (action as any).usage.model || modelName;
           }
-          this.logger.log(`[Run ${run.id}] [Step 7] LLM chose to respond to user. Appending assistant message.`);
+          this.logger.log(`[Run ${runId}] [Step 7] LLM chose to respond to user. Appending assistant message.`);
           const assistantMsg: Message = {
             id: crypto.randomUUID(),
             role: MessageRole.ASSISTANT,
@@ -159,14 +169,16 @@ Last Updated   ${lastUpdated}
             }]
           };
           await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
-          this.stream.publish(run.id, 'message.created', { message: assistantMsg });
-          await this.executionTracker.updateRunStatus(run.id, RunStatus.COMPLETED, 'Completed');
-          this.logger.log(`[Run ${run.id}] [Step 8] Run completed successfully.`);
+          this.stream.publish(runId, 'message.created', { message: assistantMsg });
+          if (!isSubAgent) {
+            await this.executionTracker.updateRunStatus(runId, RunStatus.COMPLETED, 'Completed');
+          }
+          this.logger.log(`[Run ${runId}] [Step 8] Run completed successfully.`);
 
           // Save episodic memory so future runs have context about what happened
           await this.memoryService.saveRunSummary(
             context.workspaceId,
-            run.id,
+            runId,
             `User asked: "${userInput.slice(0, 120)}". Agent responded: "${action.content.slice(0, 200)}"`,
             context.agentId,
             context.userId,
@@ -185,7 +197,7 @@ Last Updated   ${lastUpdated}
 ═══════════════════════════════════════
 Execution Summary
 ═══════════════════════════════════════
-Run                  ${run.id}
+Run                  ${runId}
 Workspace            ${context.workspaceId}
 Conversation         ${conversationId}
 Agent                ${context.agentId}
@@ -209,8 +221,10 @@ Cost                 $0.0000
 
         // 5. Cancellation
         if (action.type === 'cancel') {
-          this.logger.warn(`[Run ${run.id}] [Step 7] Run cancelled by agent: ${action.reason}`);
-          await this.executionTracker.updateRunStatus(run.id, RunStatus.CANCELLED, action.reason);
+          this.logger.warn(`[Run ${runId}] [Step 7] Run cancelled by agent: ${action.reason}`);
+          if (!isSubAgent) {
+            await this.executionTracker.updateRunStatus(runId, RunStatus.CANCELLED, action.reason);
+          }
           return `Cancelled: ${action.reason}`;
         }
 
@@ -235,7 +249,7 @@ Cost                 $0.0000
           );
           await this.executionTracker.updateNodeStatus(decisionNode.id, ExecutionNodeStatus.COMPLETED);
 
-          this.logger.log(`[Run ${run.id}] [Step 7.${stepCount}] LLM invoked ${action.toolCalls.length} tool(s). Appending tool calls to conversation.`);
+          this.logger.log(`[Run ${runId}] [Step 7.${stepCount}] LLM invoked ${action.toolCalls.length} tool(s). Appending tool calls to conversation.`);
           const assistantMsg: Message = {
             id: crypto.randomUUID(),
             role: MessageRole.ASSISTANT,
@@ -251,15 +265,15 @@ Cost                 $0.0000
             }))
           };
           await this.conversationService.appendMessage(context.workspaceId, conversationId, assistantMsg);
-          this.stream.publish(run.id, 'message.created', { message: assistantMsg });
+          this.stream.publish(runId, 'message.created', { message: assistantMsg });
 
-          this.logger.log(`[Run ${run.id}] [Step 8.${stepCount}] Executing tools via ActionExecutorService...`);
+          this.logger.log(`[Run ${runId}] [Step 8.${stepCount}] Executing tools via ActionExecutorService...`);
           const toolMessages = await this.actionExecutor.executeAction(context, action);
           
-          this.logger.log(`[Run ${run.id}] [Step 9.${stepCount}] Appending tool execution results back to conversation.`);
+          this.logger.log(`[Run ${runId}] [Step 9.${stepCount}] Appending tool execution results back to conversation.`);
           for (const msg of toolMessages) {
             await this.conversationService.appendMessage(context.workspaceId, conversationId, msg);
-            this.stream.publish(run.id, 'message.created', { message: msg });
+            this.stream.publish(runId, 'message.created', { message: msg });
           }
           continue;
         }
@@ -267,9 +281,11 @@ Cost                 $0.0000
         // 7. Human Approval — ToolExecutorService handles pause/wait internally.
         // This branch handles if the LLM itself signals it wants a human decision.
         if (action.type === 'human_approval') {
-          this.logger.log(`[Run ${run.id}] [Step 7] Agent requested human approval. Pausing execution.`);
-          await this.executionTracker.updateRunStatus(run.id, RunStatus.REQUIRES_ACTION, 'HumanApprovalRequired');
-          return `Approval requested. Check pending approvals for run '${run.id}'.`;
+          this.logger.log(`[Run ${runId}] [Step 7] Agent requested human approval. Pausing execution.`);
+          if (!isSubAgent) {
+            await this.executionTracker.updateRunStatus(runId, RunStatus.REQUIRES_ACTION, 'HumanApprovalRequired');
+          }
+          return `Approval requested. Check pending approvals for run '${runId}'.`;
         }
       }
 
@@ -283,13 +299,17 @@ Cost                 $0.0000
       );
       await this.executionTracker.updateNodeStatus(errorNode.id, ExecutionNodeStatus.FAILED);
       
-      this.logger.warn(`Run ${run.id} reached max reasoning steps (${maxReasoningSteps})`);
-      await this.executionTracker.updateRunStatus(run.id, RunStatus.FAILED, 'MaxStepsReached');
+      this.logger.warn(`Run ${runId} reached max reasoning steps (${maxReasoningSteps})`);
+      if (!isSubAgent) {
+        await this.executionTracker.updateRunStatus(runId, RunStatus.FAILED, 'MaxStepsReached');
+      }
       return "I've reached my internal reasoning limit and must stop.";
 
     } catch (error: any) {
-      this.logger.error(`Run ${run.id} failed`, error);
-      await this.executionTracker.updateRunStatus(run.id, RunStatus.FAILED, error.message || 'Unknown error');
+      this.logger.error(`Run ${runId} failed`, error);
+      if (!isSubAgent) {
+        await this.executionTracker.updateRunStatus(runId, RunStatus.FAILED, error.message || 'Unknown error');
+      }
       throw error;
     }
   }

@@ -35,7 +35,7 @@ export function useExecutionStream(executionId: string | null, workspaceId: stri
 
     let abortController = new AbortController();
     
-    const connect = async () => {
+    const connect = async (retryCount = 0) => {
       try {
         setIsConnected(true);
         const response = await fetch(url.toString(), {
@@ -48,6 +48,15 @@ export function useExecutionStream(executionId: string | null, workspaceId: stri
         });
 
         if (!response.ok) {
+          if (response.status === 404 && retryCount < 10) {
+            // Race condition: Backend is still creating the Run record. Retry in 500ms
+            setTimeout(() => {
+              if (!abortController.signal.aborted) {
+                connect(retryCount + 1);
+              }
+            }, 500);
+            return;
+          }
           throw new Error(`Failed to connect to stream: ${response.status}`);
         }
 
@@ -96,14 +105,16 @@ export function useExecutionStream(executionId: string | null, workspaceId: stri
   }, [executionId, workspaceId]);
 
   const handleEvent = useCallback((event: any) => {
-    const { type, data } = event;
-    
+    if (!event || !event.type) return; // Guard against malformed events
+
+    const { type, payload: data } = event;
+
     switch (type) {
       case 'run.started':
         setRunStatus('RUNNING');
         break;
       case 'run.updated':
-        if (data.status) setRunStatus(data.status);
+        if (data?.status) setRunStatus(data.status);
         break;
       case 'run.completed':
         setRunStatus('COMPLETED');
@@ -113,13 +124,15 @@ export function useExecutionStream(executionId: string | null, workspaceId: stri
         break;
       case 'node.created':
       case 'node.updated':
-        setNodes(prev => ({
-          ...prev,
-          [data.id]: {
-            ...prev[data.id],
-            ...data
-          }
-        }));
+        if (data?.id) {
+          setNodes(prev => ({
+            ...prev,
+            [data.id]: {
+              ...prev[data.id],
+              ...data
+            }
+          }));
+        }
         break;
     }
   }, []);
