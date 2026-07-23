@@ -31,6 +31,12 @@ export class ToolExecutionStartedEvent extends AgentEvent {}
 export class ToolExecutionCompletedEvent extends AgentEvent {}
 export class ToolExecutionFailedEvent extends AgentEvent {}
 
+export class MemoryCreatedEvent extends AgentEvent {}
+export class MemoryUpdatedEvent extends AgentEvent {}
+export class MemoryDeletedEvent extends AgentEvent {}
+export class MemoryExpiredEvent extends AgentEvent {}
+export class MemoryCompressedEvent extends AgentEvent {}
+
 @Injectable()
 export class EventBusService {
   constructor(private readonly eventEmitter: EventEmitter2) {}
@@ -101,5 +107,25 @@ export class EventBusService {
 
   emitError(traceId: string, agentId: string, conversationId: string, error: any) {
     this.eventEmitter.emit('error', new ErrorEvent(traceId, agentId, conversationId, error));
+  }
+
+  emitMemoryCreated(traceId: string, agentId: string, memoryRecord: any) {
+    this.eventEmitter.emit('memory.created', new MemoryCreatedEvent(traceId, agentId, 'system', { record: memoryRecord }));
+  }
+
+  emitMemoryUpdated(traceId: string, agentId: string, memoryRecord: any) {
+    this.eventEmitter.emit('memory.updated', new MemoryUpdatedEvent(traceId, agentId, 'system', { record: memoryRecord }));
+  }
+
+  emitMemoryDeleted(traceId: string, agentId: string, memoryId: string) {
+    this.eventEmitter.emit('memory.deleted', new MemoryDeletedEvent(traceId, agentId, 'system', { memoryId }));
+  }
+
+  emitMemoryExpired(traceId: string, agentId: string, memoryId: string) {
+    this.eventEmitter.emit('memory.expired', new MemoryExpiredEvent(traceId, agentId, 'system', { memoryId }));
+  }
+
+  emitMemoryCompressed(traceId: string, agentId: string, compressedRecords: any[]) {
+    this.eventEmitter.emit('memory.compressed', new MemoryCompressedEvent(traceId, agentId, 'system', { compressedRecords }));
   }
 }

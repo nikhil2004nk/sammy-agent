@@ -9,6 +9,7 @@ import { ConversationModule } from '../conversation/conversation.module';
 import { AgentStepService } from './agent-loop/agent-step.service';
 import { ActionExecutorService } from './agent-loop/action-executor.service';
 import { AgentLoopService } from './agent-loop/agent-loop.service';
+import { AgentOrchestratorService } from './agent-loop/agent-orchestrator.service';
 import { ExecutionModule } from '../execution/execution.module';
 import { RegistryModule } from '../registry/registry.module';
 import { MemoryModule } from '../memory/memory.module';
@@ -25,7 +26,7 @@ import { MemoryModule } from '../memory/memory.module';
     MemoryModule,
     PlannerModule,
   ],
-  providers: [ExecutionService, AgentStepService, ActionExecutorService, AgentLoopService],
+  providers: [ExecutionService, AgentStepService, ActionExecutorService, AgentLoopService, AgentOrchestratorService],
   exports: [ExecutionService, AgentLoopService],
 })
 export class RuntimeModule {}

@@ -17,9 +17,17 @@ export interface ExecutionContext {
   readonly memoryContext?: string;
 
   // Multi-agent orchestration — delegation depth control
-  readonly delegationDepth?: number;      // Current depth (starts at 0)
-  readonly maxDelegationDepth?: number;   // Default: 3
+  readonly delegationDepth?: number;
+  /**
+   * Tracks the maximum allowed depth for agent delegation
+   */
+  readonly maxDelegationDepth?: number;
   readonly parentRunId?: string;          // Run ID of the orchestrating agent
+
+  /**
+   * Optional feature flags for safe migration and A/B testing
+   */
+  readonly featureFlags?: Record<string, boolean>;
 
   // Optional configuration that can be passed per-run
   readonly modelConfig?: {

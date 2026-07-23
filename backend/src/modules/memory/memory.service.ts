@@ -1,6 +1,6 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import { MemoryQuery, MemoryEntry, IEpisodicMemoryProvider, ISemanticMemoryProvider } from './memory.types';
-import type { IMemoryProvider } from './memory.types';
+import { Injectable, Logger } from '@nestjs/common';
+import { MemoryQuery, MemoryEntry } from './interfaces/memory.types';
+import { MemoryManager } from './memory-manager.service';
 
 /**
  * MemoryService
@@ -16,22 +16,20 @@ import type { IMemoryProvider } from './memory.types';
 export class MemoryService {
   private readonly logger = new Logger(MemoryService.name);
 
-  constructor(
-    @Inject(IEpisodicMemoryProvider) private readonly episodic: IMemoryProvider,
-    @Inject(ISemanticMemoryProvider) private readonly semantic: IMemoryProvider,
-  ) {}
+  constructor(private readonly memoryManager: MemoryManager) {}
 
   /**
    * Build a memory context string for injection into the agent's system prompt.
    */
-  async buildContext(workspaceId: string, userId?: string, agentId?: string): Promise<string> {
-    const query: MemoryQuery = { workspaceId, userId, agentId, limit: 5 };
+  async buildContext(workspaceId: string, userId?: string, agentId?: string, queryStr?: string, strategy?: 'FAST' | 'PLANNING' | 'DEEP'): Promise<string> {
+    const query: MemoryQuery = { workspaceId, userId, agentId, limit: 5, query: queryStr, strategy };
 
-    const [episodicEntries, semanticEntries] = await Promise.all([
-      this.episodic.recall(query).catch(() => [] as MemoryEntry[]),
-      this.semantic.recall(query).catch(() => [] as MemoryEntry[]),
-    ]);
-
+    const entries = await this.memoryManager.retrieve(query);
+    
+    // Temporary formatting while we transition away from MemoryEntry types
+    const episodicEntries = entries.filter(e => !e.id.includes('semantic'));
+    const semanticEntries = entries.filter(e => e.id.includes('semantic'));
+    
     const sections: string[] = [];
 
     if (episodicEntries.length > 0) {
@@ -67,19 +65,29 @@ Total       ${episodicEntries.length + semanticEntries.length}
   }
 
   /**
+   * IPlanningMemory Implementation:
+   * Retrieves memory context tailored specifically to the given goal/intent.
+   */
+  async getRelevantContext(workspaceId: string, goal: string, userId?: string): Promise<{ context: string }> {
+    // Explicitly use the PLANNING strategy for the Planner subsystem
+    const contextStr = await this.buildContext(workspaceId, userId, undefined, goal, 'PLANNING');
+    return { context: contextStr };
+  }
+
+  /**
    * Store a summary of a completed run as an episodic memory.
    * Called after the agent loop finishes to build long-term recall.
    */
   async saveRunSummary(workspaceId: string, runId: string, summary: string, agentId?: string, userId?: string): Promise<void> {
     try {
-      await this.episodic.remember({
+      await this.memoryManager.save({
         workspaceId,
         runId,
         agentId,
         userId,
         summary,
         importance: 1,
-      });
+      }, 'EPISODIC');
       this.logger.debug(`Saved episodic memory for run '${runId}'`);
     } catch (err) {
       this.logger.error(`Failed to save episodic memory for run '${runId}'`, err);

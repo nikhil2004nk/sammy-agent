@@ -18,6 +18,7 @@ import { McpModule } from './modules/mcp/mcp.module';
 import { RegistryModule } from './modules/registry/registry.module';
 import { WorkflowsModule } from './modules/workflows/workflow.module';
 import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [

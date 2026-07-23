@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { IMemoryProvider, MemoryEntry, MemoryQuery } from './memory.types';
+import { PrismaService } from '../../prisma/prisma.service';
+import { IMemoryProvider, MemoryEntry, MemoryQuery } from '../interfaces/memory.types';
 
 /**
  * PostgresEpisodicMemoryProvider

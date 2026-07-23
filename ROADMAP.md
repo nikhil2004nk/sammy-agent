@@ -275,29 +275,35 @@ The evolution of Sammy is broken down into architecture-driven phases.
 * **Deliverables:** A dedicated Planner Service; modification of Orchestrator to return `DelegationResult`.
 * **Success Criteria:** The system can receive a complex goal, break it into three distinct sub-tasks, and execute them sequentially without manual intervention.
 
-### Phase 4: Memory
-* **Vision:** Give agents context across sessions to personalize execution.
-* **Goals:** Implement Semantic and Episodic memory layers.
-* **Deliverables:** Vector database integration; memory retrieval injected directly into the `ExecutionContext`.
-* **Success Criteria:** Agents can recall user preferences from a previous session and alter their plan accordingly.
+### Phase 4: Memory Architecture [COMPLETED]
+**Goal**: Make Memory an architectural subsystem with tiers and deterministic pipelines.
 
-### Phase 5: Multi-Agent Collaboration
-* **Vision:** Enable specialized, independent agents to solve problems collectively.
-* **Goals:** Build the Capability Resolver and Agent Registry.
-* **Deliverables:** Pluggable registry; support for parallel execution (`Promise.all()`) of independent sub-runs.
-* **Success Criteria:** The Planner can dynamically select a "Research Agent" and a "Code Agent" to operate in tandem based on the goal.
+* `[x]` **Milestone 4.1**: Domain definition (Models, Interfaces, Providers).
+* `[x]` **Milestone 4.2**: Base `MemoryRecord` and tier models (Semantic, Episodic, Working).
+* `[x]` **Milestone 4.3**: `MemoryManager` Orchestrator.
+* `[x]` **Milestone 4.4**: Retrieval Strategies (`IPlanningMemory` integration).
+* `[x]` **Milestone 4.5**: Retrieval Pipeline (Merge -> Dedup -> Rank -> Budget).
+* `[x]` **Milestone 4.6**: Write Pipeline (Evaluate -> Route).
+* `[x]` **Milestone 4.7**: Policy plugins (Retention).
+* `[x]` **Milestone 4.8**: Event-driven Memory (EventBus integration).
+* `[x]` **Milestone 4.9**: `IEmbeddingProvider` Boundary.
+* `[x]` **Milestone 4.10**: `IVectorStore` Boundary (PgVector stub).
+* `[x]` **Milestone 4.11**: Planner Integration (Strategy selection).
+* `[x]` **Milestone 4.12**: Decouple `KnowledgeModule` (RAG) scaffolding. Vector Database implementation.
+
+### Phase 5: Agent Ecosystem [IN PROGRESS]
+* **Vision:** Treat multiple agents as first-class citizens in a dynamic ecosystem.
+* **Goals:** Build the Agent Registry, Capability Resolver, and parallel execution model.
+* **Deliverables:** Dynamic database-backed registry, agent lifecycle management, selection strategies (cost, latency, best match), parallel execution with dependencies, and inter-agent contracts.
+* **Success Criteria:** The Planner can dynamically select a "Research Agent" and a "Code Agent", execute them in parallel, and synthesize their results via Reflection.
 
 ### Phase 6: Workflow Engine
-* **Vision:** Allow static, guaranteed topologies for critical business processes.
-* **Goals:** First-class Directed Acyclic Graph (DAG) support.
-* **Deliverables:** Workflow runner capable of branching, loops, and retry topologies.
-* **Success Criteria:** Users can define a strict 5-step workflow that orchestrates agents without relying on the LLM Planner for routing.
+* **Vision:** Support complex, long-running orchestrations beyond simple DAGs.
+* **Goals:** Implement branching, loops, retries, and persistence in workflows.
 
 ### Phase 7: Human Approval
-* **Vision:** Ensure high-risk actions remain under human control.
-* **Goals:** Centralize policy enforcement.
-* **Deliverables:** Planner integration capable of pausing execution and emitting an `ApprovalRequested` event.
-* **Success Criteria:** An agent attempting to modify a production database halts execution and resumes successfully only after explicit UI approval.
+* **Vision:** Ensure safety and governance for high-stakes actions.
+* **Goals:** Introduce checkpoints where the system pauses execution to await human approval.
 
 ### Phase 8: Scheduling
 * **Vision:** Support autonomous, asynchronous operations.

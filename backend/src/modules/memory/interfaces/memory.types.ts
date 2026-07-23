@@ -8,6 +8,10 @@ export interface MemoryQuery {
   agentId?: string;
   limit?: number;
   query?: string; // For semantic search
+  
+  // New architecture additions
+  strategy?: 'FAST' | 'PLANNING' | 'DEEP';
+  budget?: number; // Max items to return
 }
 
 export interface MemoryEntry {

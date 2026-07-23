@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ExecutionContext } from '../../common/execution-context';
 import { Intent } from './interfaces/intent.interface';
 import { PlanningResult } from './dto/planning-result.dto';
 import { TaskStatus } from './models/task.model';
+import { IPlanningMemory } from './interfaces/planning-memory.interface';
 import * as crypto from 'crypto';
 
 /**
@@ -17,11 +18,22 @@ export interface PlanStep {
 
 @Injectable()
 export class PlannerService {
+  private readonly logger = new Logger(PlannerService.name);
+
+  constructor(
+    @Inject(IPlanningMemory) private readonly memory: IPlanningMemory
+  ) {}
+
   /**
    * For Phase 1, the planner instructs the runtime to enter a ReAct (Reasoning and Acting) loop.
    * We wrap it in a PlanningResult to begin the transition to structured results.
    */
   async createPlan(context: ExecutionContext, intent: Intent): Promise<PlanningResult> {
+    this.logger.log(`Fetching relevant memory for goal: ${intent.goal}`);
+    // Simulate fetching context from memory
+    const memorySnapshot = await this.memory.getRelevantContext(context.workspaceId, intent.goal, context.userId);
+    this.logger.debug(`Retrieved memory snapshot size: ${memorySnapshot.context.length} bytes`);
+
     const task1Id = crypto.randomUUID();
     const task2Id = crypto.randomUUID();
     const task3Id = crypto.randomUUID();
@@ -44,16 +56,16 @@ export class PlannerService {
         },
         {
           id: task2Id,
-          goal: `Execute core actions for: ${intent.goal}`,
-          dependsOn: [task1Id],
-          requiredCapabilities: ['execution'],
+          goal: `Security Audit for: ${intent.goal}`,
+          dependsOn: [],
+          requiredCapabilities: ['analysis', 'verification'],
           status: TaskStatus.PENDING,
         },
         {
           id: task3Id,
-          goal: `Verify results for: ${intent.goal}`,
-          dependsOn: [task2Id],
-          requiredCapabilities: ['verification'],
+          goal: `Synthesis and Execution for: ${intent.goal}`,
+          dependsOn: [task1Id, task2Id],
+          requiredCapabilities: ['execution'],
           status: TaskStatus.PENDING,
         }
       ]
@@ -61,7 +73,7 @@ export class PlannerService {
 
     return {
       success: true,
-      reasoning: `Successfully generated a 3-step DAG execution plan for intent: ${intent.goal}`,
+      reasoning: `Successfully generated a 3-step parallel execution plan for intent: ${intent.goal}`,
       confidence: 1.0,
       plan: plan
     };
