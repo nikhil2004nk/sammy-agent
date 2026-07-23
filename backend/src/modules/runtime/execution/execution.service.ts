@@ -57,6 +57,7 @@ export class ExecutionService {
     const maxIterations = 3;
     let currentInput = userInput;
     let lastFeedback = '';
+    let finalOutput = '';
 
     while (!isComplete && iteration < maxIterations) {
       iteration++;
@@ -69,7 +70,10 @@ export class ExecutionService {
         return `Failed to generate a valid plan for: ${currentInput}`;
       }
 
-      await this.runDag(context, planningResult.plan, currentInput);
+      const taskOutputs = await this.runDag(context, planningResult.plan, currentInput);
+      if (taskOutputs && taskOutputs.length > 0) {
+        finalOutput = taskOutputs.map(o => typeof o === 'object' ? o.output || JSON.stringify(o) : o).join('\n');
+      }
 
       const reflection = await this.reflectionEngine.reflect(planningResult.plan, intent);
       isComplete = reflection.isComplete;
@@ -81,11 +85,14 @@ export class ExecutionService {
       }
     }
 
+    if (finalOutput) {
+      return finalOutput;
+    }
     return `Iterative execution completed. Final status: ${isComplete ? 'Success' : 'Incomplete'}. Feedback: ${lastFeedback}`;
   }
 
-  private async runDag(context: ExecutionContext, plan: ExecutionPlan, goal: string): Promise<void> {
+  private async runDag(context: ExecutionContext, plan: ExecutionPlan, goal: string): Promise<any[]> {
     this.logger.log(formatLog(context, `Delegating DAG execution to ExecutionSchedulerService for plan: ${plan.id}`));
-    await this.scheduler.schedule(plan, context);
+    return await this.scheduler.schedule(plan, context);
   }
 }

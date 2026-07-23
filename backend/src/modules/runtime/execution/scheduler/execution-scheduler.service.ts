@@ -23,7 +23,7 @@ export class ExecutionSchedulerService {
    * 2. Worker Allocation (Concurrency control)
    * 3. Execution Monitoring (Budget and Retries)
    */
-  async schedule(plan: ExecutionPlan, context: ExecutionContext): Promise<void> {
+  async schedule(plan: ExecutionPlan, context: ExecutionContext): Promise<any[]> {
     const tasks = plan.tasks;
     
     // Set all tasks to QUEUED initially
@@ -37,11 +37,13 @@ export class ExecutionSchedulerService {
     const maxConcurrency = context.budget?.maxConcurrency || 5;
     let runningTasks = 0;
     
+    const taskOutputs: any[] = [];
+    
     return new Promise((resolve, reject) => {
       const checkQueue = async () => {
         // Are we done?
         if (tasks.every(t => t.status === TaskStatus.COMPLETED || t.status === TaskStatus.FAILED || t.status === TaskStatus.CANCELLED || t.status === TaskStatus.SKIPPED)) {
-          resolve();
+          resolve(taskOutputs);
           return;
         }
 
@@ -55,9 +57,9 @@ export class ExecutionSchedulerService {
           tasks.filter(t => t.status === TaskStatus.QUEUED || t.status === TaskStatus.READY)
                .forEach(t => {
                  t.status = TaskStatus.CANCELLED;
-                 this.eventBus.emitTaskCancelled(context.traceId, t.id, 'Budget Exceeded: maxExecutionNodes');
+                  this.eventBus.emitTaskCancelled(context.traceId, t.id, 'Budget Exceeded: maxExecutionNodes');
                });
-          resolve();
+          resolve(taskOutputs);
           return;
         }
 
@@ -87,7 +89,8 @@ export class ExecutionSchedulerService {
           this.eventBus.emitTaskStarted(context.traceId, readyTask.id);
 
           // Fire and forget, we handle completion inside
-          this.executeTask(readyTask, tasks, context).then(() => {
+          this.executeTask(readyTask, tasks, context).then((output) => {
+            if (output) taskOutputs.push(output);
             runningTasks--;
             checkQueue();
           });
@@ -103,7 +106,7 @@ export class ExecutionSchedulerService {
                  t.status = TaskStatus.CANCELLED; 
                  this.eventBus.emitTaskCancelled(context.traceId, t.id, 'Dependencies failed or cycle detected');
               });
-              resolve();
+              resolve(taskOutputs);
            }
         }
       };
@@ -113,7 +116,7 @@ export class ExecutionSchedulerService {
     });
   }
 
-  private async executeTask(task: Task, tasksList: Task[], context: ExecutionContext): Promise<void> {
+  private async executeTask(task: Task, tasksList: Task[], context: ExecutionContext): Promise<any> {
     try {
       let attempt = 0;
       let isSuccess = false;
@@ -138,6 +141,7 @@ export class ExecutionSchedulerService {
             if (result.action === 'COMPLETE') {
               task.status = TaskStatus.COMPLETED;
               this.eventBus.emitTaskCompleted(context.traceId, task.id, result.output);
+              return result.output;
             } else if (result.action === 'SKIP') {
               task.status = TaskStatus.SKIPPED;
               this.logger.log(formatLog(context, `Task ${task.id} was SKIPPED`));
@@ -163,6 +167,8 @@ export class ExecutionSchedulerService {
     } catch (err: any) {
       task.status = TaskStatus.FAILED;
       this.eventBus.emitTaskFailed(context.traceId, task.id, err.message);
+      return null;
     }
+    return null;
   }
 }
