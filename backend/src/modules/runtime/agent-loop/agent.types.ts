@@ -36,3 +36,12 @@ export interface CancelAction extends BaseAgentAction {
 export type AgentAction = ToolCallAction | RespondAction | FinishAction | HumanApprovalAction | CancelAction;
 
 export type LoopTerminationReason = 'Completed' | 'MaxStepsReached' | 'ToolFailure' | 'Cancelled' | 'HumanApprovalRequired' | 'PlannerRequired';
+
+export interface DelegationResult {
+  success: boolean;
+  agentId: string;
+  runId: string;
+  status: 'COMPLETED' | 'FAILED' | 'REQUIRES_APPROVAL';
+  output?: string;
+  errors?: string[];
+}

@@ -8,6 +8,7 @@ import { EventsModule } from './modules/events/events.module';
 import { ObservabilityModule } from './modules/observability/observability.module';
 
 import { RuntimeModule } from './modules/runtime/runtime.module';
+import { PlannerModule } from './modules/planner/planner.module';
 import { ConversationModule } from './modules/conversation/conversation.module';
 import { AgentsModule } from './modules/agents/agents.module';
 import { LlmModule } from './modules/llm/llm.module';
@@ -34,6 +35,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
     AgentsModule,
     ConversationModule,
     RuntimeModule,
+    PlannerModule,
     RegistryModule,
     WorkflowsModule,
     SchedulerModule,

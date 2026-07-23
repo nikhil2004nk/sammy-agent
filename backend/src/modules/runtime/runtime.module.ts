@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ExecutionService } from './execution/execution.service';
-import { PlannerService } from './planner/planner.service';
+import { PlannerModule } from '../planner/planner.module';
 import { PromptsModule } from '../prompts/prompts.module';
 import { LlmModule } from '../llm/llm.module';
 import { ToolsModule } from '../tools/tools.module';
@@ -23,8 +23,9 @@ import { MemoryModule } from '../memory/memory.module';
     ExecutionModule,
     RegistryModule,
     MemoryModule,
+    PlannerModule,
   ],
-  providers: [ExecutionService, PlannerService, AgentStepService, ActionExecutorService, AgentLoopService],
+  providers: [ExecutionService, AgentStepService, ActionExecutorService, AgentLoopService],
   exports: [ExecutionService, AgentLoopService],
 })
 export class RuntimeModule {}

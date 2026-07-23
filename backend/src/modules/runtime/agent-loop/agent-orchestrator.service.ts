@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AgentLoopService } from './agent-loop.service';
+import { DelegationResult } from './agent.types';
 import { ExecutionContext, DEFAULT_MAX_DELEGATION_DEPTH } from '../../../common/execution-context';
 import * as crypto from 'crypto';
 
@@ -23,15 +24,22 @@ export class AgentOrchestratorService {
     goal: string,
     conversationId: string,
     agentId?: string,
-  ): Promise<string> {
+  ): Promise<DelegationResult> {
     const currentDepth = parentContext.delegationDepth ?? 0;
     const maxDepth = parentContext.maxDelegationDepth ?? DEFAULT_MAX_DELEGATION_DEPTH;
+    const targetAgentId = agentId || parentContext.agentId;
 
     if (currentDepth >= maxDepth) {
       this.logger.warn(
         `Delegation rejected: max depth (${maxDepth}) reached. Parent run: '${parentContext.runId}'`
       );
-      return `[Delegation blocked: maximum delegation depth of ${maxDepth} reached]`;
+      return {
+        success: false,
+        agentId: targetAgentId,
+        runId: parentContext.runId,
+        status: 'FAILED',
+        errors: [`Delegation blocked: maximum delegation depth of ${maxDepth} reached`]
+      };
     }
 
     const subRunId = crypto.randomUUID();
@@ -40,7 +48,7 @@ export class AgentOrchestratorService {
     const subContext: ExecutionContext = {
       ...parentContext,
       runId: subRunId,
-      agentId: agentId || parentContext.agentId,
+      agentId: targetAgentId,
       traceId: subTraceId,
       delegationDepth: currentDepth + 1,
       maxDelegationDepth: maxDepth,
@@ -54,10 +62,27 @@ export class AgentOrchestratorService {
       `[parent: '${parentContext.runId}']`
     );
 
-    // Spawn sub-agent in the same conversation thread
-    const result = await this.agentLoop.runLoop(subContext, conversationId, goal);
+    try {
+      // Spawn sub-agent in the same conversation thread
+      const result = await this.agentLoop.runLoop(subContext, conversationId, goal);
 
-    this.logger.log(`Sub-agent run '${subRunId}' completed. Returning result to orchestrator.`);
-    return result;
+      this.logger.log(`Sub-agent run '${subRunId}' completed. Returning result to orchestrator.`);
+      return {
+        success: true,
+        agentId: subContext.agentId,
+        runId: subRunId,
+        status: 'COMPLETED',
+        output: result
+      };
+    } catch (error: any) {
+      this.logger.error(`Sub-agent run '${subRunId}' failed`, error);
+      return {
+        success: false,
+        agentId: subContext.agentId,
+        runId: subRunId,
+        status: 'FAILED',
+        errors: [error.message || String(error)]
+      };
+    }
   }
 }
